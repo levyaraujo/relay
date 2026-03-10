@@ -1,17 +1,11 @@
 package transactions
 
 import (
-	"lucrerp/companies"
 	"lucrerp/shared"
-	"lucrerp/users"
 	"time"
 
 	"github.com/google/uuid"
 )
-
-type Stringer interface {
-	String() string
-}
 
 type TransactionType int
 
@@ -34,14 +28,12 @@ func (t TransactionType) String() string {
 
 type Transaction struct {
 	shared.Model
-	CompanyId   uuid.UUID       `gorm:"not null"`
-	Type        TransactionType `gorm:"not null"`
-	Amount      float64         `gorm:"type:decimal(15,2);not null"`
-	Description string          `gorm:"not null"`
-	DueDate     time.Time
-	PaidDate    time.Time
-	Origin      string            `gorm:"not null"`
-	CreatorId   uuid.UUID         `gorm:"not null"`
-	Creator     users.User        `gorm:"foreignKey:CreatorId"`
-	Company     companies.Company `gorm:"foreignKey:CompanyId"`
+	CompanyId   uuid.UUID       `db:"company_id"`
+	Type        TransactionType `db:"type"`
+	Amount      float64         `db:"amount"`
+	Description string          `db:"description"`
+	DueDate     time.Time       `db:"due_date"`
+	PaidDate    time.Time       `db:"paid_date"`
+	Origin      string          `db:"origin"`
+	CreatorId   uuid.UUID       `db:"creator_id"`
 }
