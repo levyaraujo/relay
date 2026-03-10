@@ -1,7 +1,6 @@
 package shared
 
 import (
-	"log"
 	"os"
 	"sync"
 
@@ -21,7 +20,7 @@ func LoadConfig() *Settings {
 	settingsOnce.Do(func() {
 		err := godotenv.Load()
 		if err != nil {
-			log.Fatal("Error loading .env file")
+			godotenv.Load("../.env")
 		}
 
 		settings = &Settings{
