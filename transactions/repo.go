@@ -6,7 +6,7 @@ import (
 )
 
 type TransactionRepository interface {
-	Create(t *Transaction) error
+	Create(t *Transaction) (*Transaction, error)
 	Update(t *Transaction) (*Transaction, error)
 	GetByID(id uuid.UUID) (*Transaction, error)
 }
@@ -19,14 +19,25 @@ func NewRepository(db *sqlx.DB) TransactionRepository {
 	return &repository{db: db}
 }
 
-func (r *repository) Create(t *Transaction) error {
-	_, err := r.db.NamedExec(`
+func (r *repository) Create(t *Transaction) (*Transaction, error) {
+	var created Transaction
+	rows, err := r.db.NamedQuery(`
 		INSERT INTO transactions
 			(id, company_id, type, amount, description, due_date, paid_date, origin, creator_id, created_at, updated_at, deleted)
 		VALUES
 			(:id, :company_id, :type, :amount, :description, :due_date, :paid_date, :origin, :creator_id, :created_at, :updated_at, :deleted)
+		RETURNING *
 	`, t)
-	return err
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	if rows.Next() {
+		if err := rows.StructScan(&created); err != nil {
+			return nil, err
+		}
+	}
+	return &created, nil
 }
 
 func (r *repository) Update(t *Transaction) (*Transaction, error) {
