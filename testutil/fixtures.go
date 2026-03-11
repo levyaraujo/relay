@@ -1,9 +1,9 @@
 package testutil
 
 import (
-	"lucrerp/companies"
-	"lucrerp/shared"
-	"lucrerp/users"
+	"github.com/levyaraujo/relay/companies"
+	"github.com/levyaraujo/relay/shared"
+	"github.com/levyaraujo/relay/users"
 	"time"
 
 	"github.com/google/uuid"

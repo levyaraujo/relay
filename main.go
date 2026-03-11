@@ -1,9 +1,9 @@
 package main
 
 import (
+	"github.com/levyaraujo/relay/shared"
+	"github.com/levyaraujo/relay/transactions"
 	"log"
-	"lucrerp/shared"
-	"lucrerp/transactions"
 	"net/http"
 )
 

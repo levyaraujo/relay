@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: dev
       POSTGRES_PASSWORD: xhgz0AhrUm88Qydjm7ug
-      POSTGRES_DB: lucrerp
+      POSTGRES_DB: relay
     ports:
       - "5432:5432"
     volumes:

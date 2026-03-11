@@ -1,6 +1,6 @@
 package companies
 
-import "lucrerp/shared"
+import "github.com/levyaraujo/relay/shared"
 
 type Company struct {
 	shared.Model

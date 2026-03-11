@@ -1,7 +1,7 @@
 package users
 
 import (
-	"lucrerp/shared"
+	"github.com/levyaraujo/relay/shared"
 
 	"github.com/google/uuid"
 )

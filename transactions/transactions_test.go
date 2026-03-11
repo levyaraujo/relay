@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"lucrerp/companies"
-	"lucrerp/shared"
-	"lucrerp/testutil"
-	"lucrerp/users"
+	"github.com/levyaraujo/relay/companies"
+	"github.com/levyaraujo/relay/shared"
+	"github.com/levyaraujo/relay/testutil"
+	"github.com/levyaraujo/relay/users"
 
 	"github.com/google/uuid"
 )
@@ -52,10 +52,6 @@ var (
 
 func TestMain(m *testing.M) {
 	db := shared.Connect()
-
-	companies.Migrate()
-	users.Migrate()
-	Migrate()
 
 	companyRepo := companies.NewRepository(db)
 	userRepo := users.NewRepository(db)

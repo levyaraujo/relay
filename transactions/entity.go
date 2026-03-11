@@ -1,7 +1,7 @@
 package transactions
 
 import (
-	"lucrerp/shared"
+	"github.com/levyaraujo/relay/shared"
 	"time"
 
 	"github.com/google/uuid"

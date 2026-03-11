@@ -1,4 +1,4 @@
-module lucrerp
+module github.com/levyaraujo/relay
 
 go 1.25.0
 
