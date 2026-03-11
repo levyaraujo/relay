@@ -2,20 +2,13 @@ package main
 
 import (
 	"log"
-	"lucrerp/companies"
 	"lucrerp/shared"
 	"lucrerp/transactions"
-	"lucrerp/users"
 	"net/http"
 )
 
 func main() {
 	db := shared.Connect()
-
-	companies.Migrate()
-	users.Migrate()
-	transactions.Migrate()
-
 	transactionsRepo := transactions.NewRepository(db)
 
 	mux := http.NewServeMux()
