@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: xhgz0AhrUm88Qydjm7ug
+      POSTGRES_DB: lucrerp
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
