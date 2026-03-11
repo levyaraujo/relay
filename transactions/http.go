@@ -63,14 +63,14 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var t Transaction
-	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+	var transaction Transaction
+	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	t.Id = id
+	transaction.Id = id
 
-	updated, err := h.repo.Update(&t)
+	updated, err := h.repo.Update(&transaction)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
