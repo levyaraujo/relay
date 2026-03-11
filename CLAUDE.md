@@ -203,13 +203,70 @@ Follow these steps **in order** (TDD):
 
 ## Code Style & Go Idioms
 
-- **Errors**: return `error` as the last return value; use `errors.New` for sentinel errors; wrap with `fmt.Errorf("...: %w", err)` when adding context.
+> Based on the [Google Go Style Guide](https://google.github.io/styleguide/go/).
+
+### Naming
+
+- **MixedCaps** always — never `snake_case` for Go identifiers. `MaxLength` (exported), `maxLength` (unexported).
+- **No `Get` prefix** on getters — use `Counts()` not `GetCounts()`. Use `Compute`/`Fetch` only to signal expensive operations.
+- **Initialisms**: all caps or all lower — `XMLAPI`, `htmlParser`, `HTTPClient`, never `XmlApi` or `HttpClient`.
+- **Receiver names**: 1–2 letter abbreviation of the type, consistent across all methods — `func (t Transaction)`, `func (r *repository)`.
+- **No repetition** between package name and exported symbol — `transactions.New()` not `transactions.NewTransaction()`.
+- **Variable name length proportional to scope** — single-letter for tiny scopes, descriptive for large scopes.
+- **Constants**: `MixedCaps`, never `ALL_CAPS`. Name by role, not value.
+
+### Errors
+
+- Return `error` as the last return value; use `errors.New` for sentinel errors.
+- **Wrap with `%w`** when callers need `errors.Is`/`errors.As`: `fmt.Errorf("fetch user: %w", err)`.
+- **Wrap with `%v`** at system boundaries (RPC, storage) to hide internals.
+- **Error strings**: lowercase, no trailing punctuation — `"amount cannot be negative"` not `"Amount cannot be negative."`.
+- **Indent error flow** — handle the error first, then proceed with the happy path (no `else` after early return).
+- Don't annotate solely to indicate failure — the error's existence conveys that. Add *context*, not narration.
+
+### Declarations & Types
+
+- **`:=` for non-zero** values: `i := 42`. **`var` for zero** values: `var coords Point`.
+- **Nil slices** preferred over empty: `var t []string` not `t := []string{}`. Check emptiness with `len(s) == 0`, never `s == nil`.
+- **Pass values, not pointers**, unless mutation is needed or the struct is large (e.g. proto messages).
+- Use `any` over `interface{}` (Go 1.18+).
+- Use `%q` for formatting strings — makes empty strings and control chars visible.
+
+### Functions & Interfaces
+
+- **Synchronous over async** — let callers add concurrency.
+- **Define interfaces in the consumer** package — repo interface lives next to the controller that uses it.
+- Don't define interfaces before realistic usage exists; don't export unused interfaces.
+- Keep function signatures on a single line when possible; extract local variables to shorten call sites.
+
+### Doc Comments
+
+- All exported names must have doc comments — full sentences starting with the symbol name.
+- Document non-obvious concurrency semantics, cleanup requirements, and significant error values.
+- Comments explain *why*, not *what* — let code speak for itself through clear names.
+
+### Imports
+
+- Group in order: (1) stdlib, (2) project/third-party, (3) side-effect imports.
+- Avoid renaming imports unless there's a collision or the name is uninformative.
+- Never use dot imports (`import .`).
+
+### Testing Style
+
+- **No assertion libraries** — use stdlib `testing`, `cmp.Equal`, `cmp.Diff`.
+- **Test failure format**: `FuncName(input) = got, want expected` — always got-before-want.
+- Use `t.Fatal` only when subsequent assertions would be meaningless; prefer `t.Error` to keep going.
+- **Table-driven tests** for validation logic — use field names in struct literals.
+- Never call `t.Fatal` from a goroutine — use `t.Error` and return.
+
+### General
+
 - **No global state** except `shared.DB` (initialized once at startup).
-- **Interfaces**: define them in the consumer package (repo interface lives next to controller that uses it).
 - **Exported names only** in public API surface (repository interface, handler, controller constructor).
-- **Short variable names** for local scope (`t` for transaction, `r` for request/repo, `w` for writer).
 - **No `init()`** functions.
 - **Defer `rows.Close()`** immediately after `NamedQuery` calls.
+- **No panics** for normal error handling — use `error` and multiple returns.
+- **Don't copy** `sync.Mutex` or types with pointer-receiver methods.
 - Run `go vet ./...` and `go fmt ./...` before committing.
 
 ---

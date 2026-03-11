@@ -264,16 +264,34 @@ DROP TABLE IF EXISTS foos;
 
 Before finishing any task, verify:
 
+**Architecture**
 - [ ] No business logic in HTTP handlers
 - [ ] No HTTP knowledge in controllers or repos
 - [ ] All INSERT/UPDATE set `Id`, `CreatedAt`, `UpdatedAt`
 - [ ] All SELECT queries filter `deleted = false`
 - [ ] Sentinel errors defined and mapped to HTTP status in handler
 - [ ] `defer rows.Close()` after every `NamedQuery`
+
+**Go Style (Google Style Guide)**
+- [ ] MixedCaps naming — never `snake_case` or `ALL_CAPS` for constants
+- [ ] No `Get` prefix on getters — `Counts()` not `GetCounts()`
+- [ ] No package-name repetition in exported symbols
+- [ ] Error strings lowercase, no trailing punctuation
+- [ ] Error flow indented (handle error first, happy path unindented)
+- [ ] `%w` for wrappable errors, `%v` at system boundaries
+- [ ] `var` for zero values, `:=` for non-zero values
+- [ ] Nil slices preferred (`var s []T`), emptiness checked with `len(s) == 0`
+- [ ] Values passed (not pointers) unless mutation or large struct
+- [ ] Interfaces defined in consumer package
+- [ ] Doc comments on all exported names (full sentences, start with symbol name)
+- [ ] Test failures use `Func(input) = got, want expected` format
+- [ ] No assertion libraries — stdlib `testing` + `cmp` only
+
+**Process**
 - [ ] Tests written before or alongside implementation (TDD)
 - [ ] `TestMain` handles schema setup and cleanup
 - [ ] SQL migration file created alongside code changes
-- [ ] `go vet ./...` passes
+- [ ] `go vet ./...` and `go fmt ./...` pass
 
 ---
 
@@ -288,6 +306,15 @@ Before finishing any task, verify:
 | Skipping `Id`/timestamps on insert   | Set in controller before calling `repo.Create`|
 | Using `DB.Get` for NamedQuery inserts| Use `NamedQuery` + `StructScan` for RETURNING |
 | Writing tests after implementation   | Write failing tests first (TDD)               |
+| `GetFoo()` getter name               | `Foo()` — no `Get` prefix                    |
+| `ALL_CAPS` or `kFoo` constants       | `MixedCaps`: `MaxRetries`, `defaultTimeout`  |
+| `transactions.NewTransaction()`      | `transactions.New()` — don't repeat pkg name |
+| `"Amount is invalid."` error string  | `"amount is invalid"` — lowercase, no period  |
+| `else` after error return            | Remove `else`, continue at top-level indent   |
+| `s == nil` to check empty slice      | `len(s) == 0`                                 |
+| Pointer arg for small read-only data | Pass by value                                 |
+| Assertion library in tests           | stdlib `testing` + `cmp.Diff`                 |
+| `t.Fatalf` inside goroutine          | `t.Errorf` + return                           |
 
 ---
 
@@ -295,5 +322,6 @@ Before finishing any task, verify:
 
 Read these files when you need deeper context:
 
+- `references/go-style.md` — Google Go Style Guide rules: naming, errors, declarations, testing, concurrency, formatting
 - `references/repo-patterns.md` — Advanced sqlx patterns, error handling, NULL columns
 - `references/testing-guide.md` — TestMain lifecycle, testutil seeds, table-driven tests
