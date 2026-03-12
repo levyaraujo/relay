@@ -96,7 +96,7 @@ Every domain follows this internal layout:
   ```go
   var ErrNegativeAmount = errors.New("amount cannot be negative")
 
-  func (c *TransactionController) CreateTransaction(t *Transaction) (*Transaction, error) {
+  func (c *TransactionController) Create(t *Transaction) (*Transaction, error) {
       if t.Amount < 0 {
           return nil, ErrNegativeAmount
       }
