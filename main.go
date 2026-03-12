@@ -1,18 +1,25 @@
 package main
 
 import (
-	"github.com/levyaraujo/relay/shared"
-	"github.com/levyaraujo/relay/transactions"
 	"log"
 	"net/http"
+
+	"github.com/levyaraujo/relay/shared"
+	"github.com/levyaraujo/relay/transactions"
+	"github.com/levyaraujo/relay/vendors"
 )
 
 func main() {
 	db := shared.Connect()
+
 	transactionsRepo := transactions.NewRepository(db)
+	transactionsCtrl := transactions.NewController(transactionsRepo)
+	vendorRepo := vendors.NewRepository(db)
+	vendorCtrl := vendors.NewController(vendorRepo)
 
 	mux := http.NewServeMux()
-	transactions.NewHandler(transactionsRepo).RegisterRoutes(mux)
+	transactions.NewHandler(transactionsCtrl).RegisterRoutes(mux)
+	vendors.NewHandler(vendorCtrl).RegisterRoutes(mux)
 
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
