@@ -8,11 +8,11 @@ import (
 )
 
 type Handler struct {
-	repo TransactionRepository
+	controller *TransactionController
 }
 
-func NewHandler(repo TransactionRepository) *Handler {
-	return &Handler{repo: repo}
+func NewHandler(controller *TransactionController) *Handler {
+	return &Handler{controller: controller}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
@@ -28,7 +28,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, err := h.repo.Create(&t)
+	created, err := h.controller.Create(&t)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -46,7 +46,7 @@ func (h *Handler) getByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t, err := h.repo.GetByID(id)
+	t, err := h.controller.GetTransactionByID(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -70,7 +70,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	}
 	transaction.Id = id
 
-	updated, err := h.repo.Update(&transaction)
+	updated, err := h.controller.UpdateTransaction(&transaction)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

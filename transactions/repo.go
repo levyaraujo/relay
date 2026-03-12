@@ -41,7 +41,7 @@ func (r *repository) Create(t *Transaction) (*Transaction, error) {
 }
 
 func (r *repository) Update(t *Transaction) (*Transaction, error) {
-	var updated Transaction
+	var transaction Transaction
 	rows, err := r.db.NamedQuery(`
 		UPDATE transactions SET
 			company_id  = :company_id,
@@ -61,11 +61,11 @@ func (r *repository) Update(t *Transaction) (*Transaction, error) {
 	}
 	defer rows.Close()
 	if rows.Next() {
-		if err := rows.StructScan(&updated); err != nil {
+		if err := rows.StructScan(&transaction); err != nil {
 			return nil, err
 		}
 	}
-	return &updated, nil
+	return &transaction, nil
 }
 
 func (r *repository) GetByID(id uuid.UUID) (*Transaction, error) {

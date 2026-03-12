@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/levyaraujo/relay/companies"
 	"github.com/levyaraujo/relay/shared"
 	"github.com/levyaraujo/relay/testutil"
@@ -17,12 +18,13 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestTransactionController(t *testing.T) {
+func TestTransactionHandler(t *testing.T) {
 	mux := http.NewServeMux()
 	testHandler.RegisterRoutes(mux)
 
 	t.Run("create transaction", func(t *testing.T) {
-		newTransaction := *testTransaction
+		seeded := seedTransaction(t)
+		newTransaction := *seeded
 		newTransaction.Id = uuid.New()
 
 		body, _ := json.Marshal(newTransaction)
@@ -36,7 +38,8 @@ func TestTransactionController(t *testing.T) {
 	})
 
 	t.Run("get transaction by id", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/transactions/"+testTransaction.Id.String(), nil)
+		seeded := seedTransaction(t)
+		req := httptest.NewRequest(http.MethodGet, "/transactions/"+seeded.Id.String(), nil)
 		res := httptest.NewRecorder()
 
 		mux.ServeHTTP(res, req)
@@ -46,22 +49,37 @@ func TestTransactionController(t *testing.T) {
 }
 
 var (
-	testHandler     *Handler
-	testTransaction *Transaction
+	testDB                *sqlx.DB
+	testHandler           *Handler
+	transactionRepo       TransactionRepository
+	transactionController *TransactionController
+	companyRepo           companies.CompanyRepository
+	userRepo              users.UserRepository
 )
 
 func TestMain(m *testing.M) {
-	db := shared.Connect()
+	testDB = shared.Connect()
 
-	companyRepo := companies.NewRepository(db)
-	userRepo := users.NewRepository(db)
-	txRepo := NewRepository(db)
+	companyRepo = companies.NewRepository(testDB)
+	userRepo = users.NewRepository(testDB)
+	transactionRepo = NewRepository(testDB)
+	transactionController = NewController(transactionRepo)
 
+	testHandler = NewHandler(transactionController)
+
+	defer func() {
+		testutil.CleanTables(nil, testDB, "transactions", "users", "companies")
+	}()
+
+	os.Exit(m.Run())
+}
+
+// seedTransaction creates a company, user, and transaction for a single test.
+func seedTransaction(t *testing.T) *Transaction {
+	t.Helper()
 	company, user := testutil.SeedCompanyAndUser(companyRepo, userRepo)
 
-	testHandler = NewHandler(txRepo)
-
-	t := &Transaction{
+	transaction := &Transaction{
 		CompanyId:   company.Id,
 		Type:        TransactionTypeDebit,
 		Amount:      1000,
@@ -69,23 +87,20 @@ func TestMain(m *testing.M) {
 		Origin:      "test",
 		CreatorId:   user.Id,
 	}
-	t.Id = uuid.New()
-	t.CreatedAt = time.Now()
-	t.UpdatedAt = time.Now()
+	transaction.Id = uuid.New()
+	transaction.CreatedAt = time.Now()
+	transaction.UpdatedAt = time.Now()
 
-	var err error
-	testTransaction, err = txRepo.Create(t)
+	created, err := transactionRepo.Create(transaction)
 	if err != nil {
-		panic("failed to seed test transaction: " + err.Error())
+		t.Fatalf("seed transaction: %v", err)
 	}
 
-	defer func() {
-		db.MustExec("DELETE FROM transactions")
-		db.MustExec("DELETE FROM users")
-		db.MustExec("DELETE FROM companies")
-	}()
+	t.Cleanup(func() {
+		testutil.CleanTables(t, testDB, "transactions", "users", "companies")
+	})
 
-	os.Exit(m.Run())
+	return created
 }
 
 func assertStatus(t testing.TB, got, want int) {
