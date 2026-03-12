@@ -1,18 +1,23 @@
 package testutil
 
 import (
+	"fmt"
+	"math/rand"
+	"testing"
+	"time"
+
 	"github.com/levyaraujo/relay/companies"
 	"github.com/levyaraujo/relay/shared"
 	"github.com/levyaraujo/relay/users"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 )
 
 func NewCompany() *companies.Company {
 	c := &companies.Company{
 		Name: "Test Company",
-		CNPJ: "12345678000199",
+		CNPJ: fmt.Sprintf("%014d", rand.Int63n(99999999999999)),
 	}
 	c.Id = uuid.New()
 	c.CreatedAt = time.Now()
@@ -23,7 +28,7 @@ func NewCompany() *companies.Company {
 func NewUser(companyId uuid.UUID) *users.User {
 	u := &users.User{
 		Name:      "Test User",
-		Email:     "test@example.com",
+		Email:     uuid.New().String() + "@test.com",
 		Password:  "hashed_password",
 		CompanyId: companyId,
 	}
@@ -49,4 +54,16 @@ func SeedCompanyAndUser(companyRepo companies.CompanyRepository, userRepo users.
 
 func SetupDB() *shared.Settings {
 	return shared.LoadConfig()
+}
+
+// CleanTables deletes all rows from the given tables in order.
+// Pass table names in reverse FK dependency order (children first).
+// t is optional — pass nil when calling from TestMain.
+func CleanTables(t testing.TB, db *sqlx.DB, tables ...string) {
+	if t != nil {
+		t.Helper()
+	}
+	for _, table := range tables {
+		db.MustExec("DELETE FROM " + table)
+	}
 }
