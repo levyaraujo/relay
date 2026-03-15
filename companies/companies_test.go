@@ -3,6 +3,7 @@ package companies
 import (
 	"bytes"
 	"encoding/json"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -88,10 +89,10 @@ func TestCompanyHandler(t *testing.T) {
 	})
 
 	t.Run("update returns 200", func(t *testing.T) {
-		seeded := seedCompany(t)
-		seeded.Name = "Updated Co"
-		body, _ := json.Marshal(seeded)
-		req := httptest.NewRequest(http.MethodPut, "/companies/"+seeded.Id.String(), bytes.NewReader(body))
+		co := seedCompany(t)
+		co.Name = "Updated Co"
+		body, _ := json.Marshal(co)
+		req := httptest.NewRequest(http.MethodPut, "/companies/"+co.Id.String(), bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		res := httptest.NewRecorder()
 
@@ -128,11 +129,25 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// Valid CNPJs for test uniqueness (all pass check-digit validation).
+var validCNPJs = []string{
+	"96100041000129",
+	"11222333000181",
+	"11444777000161",
+	"61365284000104",
+	"04295166000133",
+	"33014556000196",
+	"03654119000176",
+	"76535764000143",
+	"43776517000180",
+	"53113791000122",
+}
+
 func seedCompany(t *testing.T) *Company {
 	t.Helper()
 	c := &Company{
 		Name: "Test Company",
-		CNPJ: "96100041000129",
+		CNPJ: validCNPJs[rand.Intn(len(validCNPJs))],
 	}
 	c.Id = uuid.New()
 	c.CreatedAt = time.Now()
