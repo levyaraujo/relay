@@ -2,29 +2,103 @@ package companies
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
-	"math/rand"
+	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
-	"github.com/levyaraujo/relay/shared"
+	"github.com/levyaraujo/relay/accounts"
 )
 
-// --- HTTP handler tests (integration, real DB) ---
+// --- controller tests ---
+
+func TestControllerCreate(t *testing.T) {
+	repo := newMockCompanyRepo()
+	ctrl := NewController(repo)
+	accRepo := &mockAccountRepo{}
+
+	t.Run("valid company", func(t *testing.T) {
+		co := &Company{Name: "Acme", CNPJ: "96100041000129"}
+		created, err := ctrl.Create(co, accRepo)
+		if err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+		if created.Name != "Acme" {
+			t.Errorf("Name = %q, want %q", created.Name, "Acme")
+		}
+		if created.Id == uuid.Nil {
+			t.Error("Id should be populated")
+		}
+	})
+
+	t.Run("empty name returns error", func(t *testing.T) {
+		co := &Company{Name: "", CNPJ: "96100041000129"}
+		_, err := ctrl.Create(co, accRepo)
+		if !errors.Is(err, ErrNameRequired) {
+			t.Errorf("Create() error = %v, want %v", err, ErrNameRequired)
+		}
+	})
+
+	t.Run("invalid CNPJ returns error", func(t *testing.T) {
+		co := &Company{Name: "Bad Co", CNPJ: "00000000000000"}
+		_, err := ctrl.Create(co, accRepo)
+		if !errors.Is(err, ErrInvalidCNPJ) {
+			t.Errorf("Create() error = %v, want %v", err, ErrInvalidCNPJ)
+		}
+	})
+}
+
+func TestControllerUpdate(t *testing.T) {
+	repo := newMockCompanyRepo()
+	ctrl := NewController(repo)
+	accRepo := &mockAccountRepo{}
+
+	co := &Company{Name: "Original", CNPJ: "96100041000129"}
+	created, _ := ctrl.Create(co, accRepo)
+
+	t.Run("valid update", func(t *testing.T) {
+		created.Name = "Updated"
+		updated, err := ctrl.Update(created)
+		if err != nil {
+			t.Fatalf("Update() error = %v", err)
+		}
+		if updated.Name != "Updated" {
+			t.Errorf("Name = %q, want %q", updated.Name, "Updated")
+		}
+	})
+
+	t.Run("empty name returns error", func(t *testing.T) {
+		created.Name = ""
+		_, err := ctrl.Update(created)
+		if !errors.Is(err, ErrNameRequired) {
+			t.Errorf("Update() error = %v, want %v", err, ErrNameRequired)
+		}
+	})
+
+	t.Run("invalid CNPJ returns error", func(t *testing.T) {
+		created.Name = "Good Name"
+		created.CNPJ = "00000000000000"
+		_, err := ctrl.Update(created)
+		if !errors.Is(err, ErrInvalidCNPJ) {
+			t.Errorf("Update() error = %v, want %v", err, ErrInvalidCNPJ)
+		}
+	})
+}
+
+// --- HTTP handler tests ---
 
 func TestCompanyHandler(t *testing.T) {
+	repo := newMockCompanyRepo()
+	ctrl := NewController(repo)
+	handler := NewHandler(ctrl, &mockAccountRepo{})
+
 	mux := http.NewServeMux()
-	testHandler.RegisterRoutes(mux)
+	handler.RegisterRoutes(mux)
 
 	t.Run("create returns 201", func(t *testing.T) {
-		t.Cleanup(func() {
-			testDB.MustExec("DELETE FROM companies")
-		})
 		c := Company{Name: "New Co", CNPJ: "96100041000129"}
 		body, _ := json.Marshal(c)
 		req := httptest.NewRequest(http.MethodPost, "/companies", bytes.NewReader(body))
@@ -61,8 +135,11 @@ func TestCompanyHandler(t *testing.T) {
 	})
 
 	t.Run("get by id returns 200", func(t *testing.T) {
-		seeded := seedCompany(t)
-		req := httptest.NewRequest(http.MethodGet, "/companies/"+seeded.Id.String(), nil)
+		// seed via controller so it's in the mock store
+		co := &Company{Name: "Lookup Co", CNPJ: "96100041000129"}
+		created, _ := ctrl.Create(co, &mockAccountRepo{})
+
+		req := httptest.NewRequest(http.MethodGet, "/companies/"+created.Id.String(), nil)
 		res := httptest.NewRecorder()
 
 		mux.ServeHTTP(res, req)
@@ -89,10 +166,12 @@ func TestCompanyHandler(t *testing.T) {
 	})
 
 	t.Run("update returns 200", func(t *testing.T) {
-		co := seedCompany(t)
-		co.Name = "Updated Co"
-		body, _ := json.Marshal(co)
-		req := httptest.NewRequest(http.MethodPut, "/companies/"+co.Id.String(), bytes.NewReader(body))
+		co := &Company{Name: "To Update", CNPJ: "96100041000129"}
+		created, _ := ctrl.Create(co, &mockAccountRepo{})
+
+		created.Name = "Updated Co"
+		body, _ := json.Marshal(created)
+		req := httptest.NewRequest(http.MethodPut, "/companies/"+created.Id.String(), bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		res := httptest.NewRecorder()
 
@@ -109,58 +188,45 @@ func assertStatus(t testing.TB, want, got int) {
 	}
 }
 
-var (
-	testDB      *sqlx.DB
-	testHandler *Handler
-	companyRepo CompanyRepository
-)
+// --- mock repos ---
 
-func TestMain(m *testing.M) {
-	testDB = shared.Connect()
-
-	companyRepo = NewRepository(testDB)
-	ctrl := NewController(companyRepo)
-	testHandler = NewHandler(ctrl)
-
-	defer func() {
-		testDB.MustExec("DELETE FROM companies")
-	}()
-
-	os.Exit(m.Run())
+type mockCompanyRepo struct {
+	store map[uuid.UUID]*Company
 }
 
-// Valid CNPJs for test uniqueness (all pass check-digit validation).
-var validCNPJs = []string{
-	"96100041000129",
-	"11222333000181",
-	"11444777000161",
-	"61365284000104",
-	"04295166000133",
-	"33014556000196",
-	"03654119000176",
-	"76535764000143",
-	"43776517000180",
-	"53113791000122",
+func newMockCompanyRepo() *mockCompanyRepo {
+	return &mockCompanyRepo{store: make(map[uuid.UUID]*Company)}
 }
 
-func seedCompany(t *testing.T) *Company {
-	t.Helper()
-	c := &Company{
-		Name: "Test Company",
-		CNPJ: validCNPJs[rand.Intn(len(validCNPJs))],
+func (m *mockCompanyRepo) Create(c *Company) (*Company, error) {
+	m.store[c.Id] = c
+	return c, nil
+}
+
+func (m *mockCompanyRepo) Update(c *Company) (*Company, error) {
+	if _, ok := m.store[c.Id]; !ok {
+		return nil, sql.ErrNoRows
 	}
-	c.Id = uuid.New()
-	c.CreatedAt = time.Now()
-	c.UpdatedAt = time.Now()
+	m.store[c.Id] = c
+	return c, nil
+}
 
-	created, err := companyRepo.Create(c)
-	if err != nil {
-		t.Fatalf("seed company: %v", err)
+func (m *mockCompanyRepo) GetByID(id uuid.UUID) (*Company, error) {
+	c, ok := m.store[id]
+	if !ok {
+		return nil, sql.ErrNoRows
 	}
+	return c, nil
+}
 
-	t.Cleanup(func() {
-		testDB.MustExec("DELETE FROM companies")
-	})
+type mockAccountRepo struct{}
 
-	return created
+func (m *mockAccountRepo) Create(a *accounts.Account) (*accounts.Account, error) {
+	return a, nil
+}
+func (m *mockAccountRepo) GetByID(id uuid.UUID) (*accounts.Account, error) {
+	return nil, sql.ErrNoRows
+}
+func (m *mockAccountRepo) Update(a *accounts.Account) (*accounts.Account, error) {
+	return a, nil
 }

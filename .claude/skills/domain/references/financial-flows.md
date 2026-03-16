@@ -118,7 +118,7 @@ A chart of accounts groups all financial accounts by type. Standard numbering:
 CREATE TABLE accounts (
     id         UUID PRIMARY KEY,
     company_id UUID NOT NULL REFERENCES companies(id),
-    code       VARCHAR(20) NOT NULL,           -- e.g. "1100"
+    code       VARCHAR(20) NOT NULL,         e.g. "1100"  -- 
     name       VARCHAR(255) NOT NULL,          -- e.g. "Cash"
     type       INTEGER NOT NULL,               -- asset/liability/equity/revenue/expense
     parent_id  UUID REFERENCES accounts(id),  -- for hierarchical chart of accounts

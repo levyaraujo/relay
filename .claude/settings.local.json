@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(go build:*)",
-      "WebFetch(domain:google.github.io)"
+      "WebFetch(domain:google.github.io)",
+      "WebFetch(domain:www.gov.br)",
+      "WebFetch(domain:adn.producaorestrita.nfse.gov.br)",
+      "WebFetch(domain:sefin.producaorestrita.nfse.gov.br)"
     ]
   }
 }

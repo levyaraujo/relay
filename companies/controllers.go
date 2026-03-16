@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/levyaraujo/relay/accounts"
 	"github.com/levyaraujo/relay/shared"
 )
 
@@ -23,7 +24,7 @@ func NewController(repo CompanyRepository) *Controller {
 }
 
 // Create validates and persists a new company.
-func (c *Controller) Create(co *Company) (*Company, error) {
+func (c *Controller) Create(co *Company, accRepo accounts.AccountRepository) (*Company, error) {
 	if co.Name == "" {
 		return nil, ErrNameRequired
 	}
@@ -32,8 +33,12 @@ func (c *Controller) Create(co *Company) (*Company, error) {
 	}
 
 	co.Model = shared.NewModel()
+	newCo, err := c.repo.Create(co)
 
-	return c.repo.Create(co)
+	if err == nil {
+		accounts.SeedDefaultCOA(accRepo, newCo.Id)
+	}
+	return newCo, err
 }
 
 // Update validates and persists changes to an existing company.

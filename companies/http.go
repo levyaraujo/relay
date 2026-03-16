@@ -7,16 +7,18 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/levyaraujo/relay/accounts"
 )
 
 // Handler holds HTTP handlers for company endpoints.
 type Handler struct {
-	ctrl *Controller
+	ctrl    *Controller
+	accRepo accounts.AccountRepository
 }
 
 // NewHandler returns a Handler wired to the given controller.
-func NewHandler(ctrl *Controller) *Handler {
-	return &Handler{ctrl: ctrl}
+func NewHandler(ctrl *Controller, accRepo accounts.AccountRepository) *Handler {
+	return &Handler{ctrl: ctrl, accRepo: accRepo}
 }
 
 // RegisterRoutes registers company routes on the given mux.
@@ -33,7 +35,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, err := h.ctrl.Create(&co)
+	created, err := h.ctrl.Create(&co, h.accRepo)
 	if err != nil {
 		if errors.Is(err, ErrNameRequired) || errors.Is(err, ErrInvalidCNPJ) {
 			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
