@@ -9,8 +9,9 @@ import (
 )
 
 var (
-	ErrNameRequired = errors.New("company name is required")
-	ErrInvalidCNPJ  = errors.New("invalid cnpj")
+	ErrNameRequired    = errors.New("company name is required")
+	ErrInvalidCNPJ     = errors.New("invalid cnpj")
+	ErrCompanyCreation = errors.New("company creation failed")
 )
 
 // Controller holds business logic for company operations.
@@ -36,7 +37,11 @@ func (c *Controller) Create(co *Company, accRepo accounts.AccountRepository) (*C
 	newCo, err := c.repo.Create(co)
 
 	if err == nil {
-		accounts.SeedDefaultCOA(accRepo, newCo.Id)
+		errCo := accounts.SeedDefaultCOA(accRepo, newCo.Id)
+
+		if errCo != nil {
+			return nil, ErrCompanyCreation
+		}
 	}
 	return newCo, err
 }

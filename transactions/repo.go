@@ -3,12 +3,14 @@ package transactions
 import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/levyaraujo/relay/shared/types"
 )
 
 type TransactionRepository interface {
 	Create(t *Transaction) (*Transaction, error)
 	Update(t *Transaction) (*Transaction, error)
 	GetByID(id uuid.UUID) (*Transaction, error)
+	ByCompanyAndDateRange(co uuid.UUID, interval types.Interval) ([]Transaction, error)
 }
 
 type repository struct {
@@ -75,4 +77,23 @@ func (r *repository) GetByID(id uuid.UUID) (*Transaction, error) {
 		return nil, err
 	}
 	return &t, nil
+}
+
+func (r *repository) ByCompanyAndDateRange(co uuid.UUID, interval types.Interval) ([]Transaction, error) {
+	var txs []Transaction
+
+	err := r.db.Select(&txs, `
+		SELECT id, company_id, creator_id, account_id, vendor_id, type, amount,
+		       description, due_date, paid_date, origin, created_at
+		FROM transactions
+		WHERE company_id = $1
+		  AND created_at >= $2
+		  AND created_at < $3
+		  AND deleted = false`,
+		co, interval.Start, interval.End,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return txs, nil
 }

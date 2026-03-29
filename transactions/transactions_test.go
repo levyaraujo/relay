@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/levyaraujo/relay/shared/types"
 )
 
 // --- mock repo ---
@@ -44,7 +45,17 @@ func (m *mockTransactionRepo) GetByID(id uuid.UUID) (*Transaction, error) {
 	return t, nil
 }
 
-// --- controller tests ---
+func (m *mockTransactionRepo) ByCompanyAndDateRange(co uuid.UUID, interval types.Interval) ([]Transaction, error) {
+	var txs []Transaction
+	for _, t := range m.store {
+		if t.CompanyId == co && !t.CreatedAt.Before(interval.Start) && t.CreatedAt.Before(interval.End) {
+			txs = append(txs, *t)
+		}
+	}
+	return txs, nil
+}
+
+// --- ctrl tests ---
 
 func TestControllerCreate(t *testing.T) {
 	repo := newMockTransactionRepo()

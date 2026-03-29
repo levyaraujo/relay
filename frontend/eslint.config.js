@@ -27,6 +27,9 @@ export default defineConfig([
       }],
       'react/react-in-jsx-scope': 'off',
       '@stylistic/indent': ['error', 2],
+      '@stylistic/object-curly-spacing': ['error', 'always'],
+      '@stylistic/jsx-curly-spacing': ['error', { 'when': 'always', 'children': true }],
+      'jsx-quotes': ['error', 'prefer-single'],
     },
   },
 ])

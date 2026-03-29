@@ -1,19 +1,19 @@
-import { ThemeProvider } from '@/contexts/Theme'
-import { AppSidebar } from '@components/Sidebar'
-import { SidebarProvider, SidebarTrigger } from '@components/ui/sidebar'
-import { Outlet } from '@tanstack/react-router'
-import { ThemeToggle } from './components/ThemeToggle'
+import { ThemeProvider } from '@/contexts/Theme';
+import { useAuth } from '@/hooks/useAuth.ts';
+import { router } from '@/router.tsx';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { RouterProvider } from '@tanstack/react-router';
+import { Toaster } from 'sonner';
+
 
 function App() {
+  const auth = useAuth()
 
   return (
-    <ThemeProvider defaultTheme='dark' storageKey='theme'>
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarTrigger />
-        <Outlet />
-      </SidebarProvider>
-      <ThemeToggle />
+    <ThemeProvider defaultTheme='light' storageKey='theme'>
+      <RouterProvider router={ router } context={ { auth } } />
+      <ReactQueryDevtools initialIsOpen={ false } />
+      <Toaster />
     </ThemeProvider>
   )
 }

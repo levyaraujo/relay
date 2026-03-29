@@ -9,6 +9,7 @@ import (
 
 type Settings struct {
 	DatabaseURL string
+	JWT_SECRET  string
 }
 
 var (

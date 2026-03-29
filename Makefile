@@ -25,3 +25,6 @@ run:
 
 test:
 	go test ./...
+
+seed:
+	go run ./cmd/seed

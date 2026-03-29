@@ -7,10 +7,10 @@ import (
 )
 
 type Model struct {
-	Id        uuid.UUID `db:"id"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
-	Deleted   bool      `db:"deleted"`
+	Id        uuid.UUID `db:"id" json:"id"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"-"`
+	Deleted   bool      `db:"deleted" json:"-"`
 }
 
 // NewModel returns a Model with Id, CreatedAt, and UpdatedAt pre-filled.

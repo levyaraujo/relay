@@ -1,3 +1,5 @@
+import { DatePicker } from '@/components/DatePicker'
+import { dashboardInterval } from '@/lib/const'
 import { Separator } from '@components/ui/separator'
 import { createFileRoute } from '@tanstack/react-router'
 import {
@@ -8,8 +10,16 @@ import {
   DollarSign,
   TrendingUp,
 } from 'lucide-react'
+import { useTransactions } from '@/hooks/useTransactions.ts';
+import type { Transaction } from '@/lib/types/transaction.ts';
 
-export const Route = createFileRoute('/dashboard')({
+
+
+export const Route = createFileRoute('/_authenticated/dashboard')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    from: (search.from as string) ?? dashboardInterval.to,
+    to: (search.to as string) ?? dashboardInterval.from,
+  }),
   component: Dashboard,
 })
 
@@ -25,29 +35,20 @@ function StatCard({ title, value, trend, trendUp, icon: Icon }: StatCardProps) {
   return (
     <div className='flex flex-col gap-2 rounded-xl border border-border bg-card p-5'>
       <div className='flex items-center justify-between'>
-        <span className='text-xs font-medium text-muted-foreground'>{title}</span>
+        <span className='text-xs font-medium text-muted-foreground'>{ title }</span>
         <Icon className='size-4 text-muted-foreground' />
       </div>
-      <span className='text-2xl font-bold'>{value}</span>
+      <span className='text-2xl font-bold'>{ value }</span>
       <div className='flex items-center gap-1 text-xs'>
-        {trendUp
+        { trendUp
           ? <ArrowUpRight className='size-3 text-green-500' />
-          : <ArrowDownRight className='size-3 text-red-500' />}
-        <span className={trendUp ? 'text-green-500' : 'text-red-500'}>{trend}</span>
+          : <ArrowDownRight className='size-3 text-red-500' /> }
+        <span className={ trendUp ? 'text-green-500' : 'text-red-500' }>{ trend }</span>
         <span className='text-muted-foreground'>vs mês anterior</span>
       </div>
     </div>
   )
 }
-
-interface Transaction {
-  description: string
-  category: string
-  type: 'credit' | 'debit'
-  amount: string
-  dueDate: string
-}
-
 const transactions: Transaction[] = [
   { description: 'Pagamento Fornecedor A', category: 'Fornecedores', type: 'debit', amount: 'R$ 4.200', dueDate: '25/03' },
   { description: 'Recebimento Cliente X', category: 'Vendas', type: 'credit', amount: 'R$ 8.500', dueDate: '26/03' },
@@ -71,24 +72,24 @@ function TransactionsTable() {
         <span>Valor</span>
         <span>Vencimento</span>
       </div>
-      {transactions.map(tx => (
-        <div key={tx.description}>
+      { transactions.map(tx => (
+        <div key={ tx.description }>
           <Separator />
           <div className='grid grid-cols-[1fr_100px_100px_90px] gap-x-4 px-5 py-3 text-sm'>
             <div className='flex flex-col'>
-              <span>{tx.description}</span>
-              <span className='text-xs text-muted-foreground'>{tx.category}</span>
+              <span>{ tx.description }</span>
+              <span className='text-xs text-muted-foreground'>{ tx.category }</span>
             </div>
-            <span className={tx.type === 'debit' ? 'text-red-500' : 'text-green-500'}>
-              {tx.type === 'debit' ? 'Débito' : 'Crédito'}
+            <span className={ tx.type === 'debit' ? 'text-red-500' : 'text-green-500' }>
+              { tx.type === 'debit' ? 'Débito' : 'Crédito' }
             </span>
-            <span className={`font-semibold ${tx.type === 'debit' ? 'text-red-500' : 'text-green-500'}`}>
-              {tx.amount}
+            <span className={ `font-semibold ${tx.type === 'debit' ? 'text-red-500' : 'text-green-500'}` }>
+              { tx.amount }
             </span>
-            <span className='text-muted-foreground'>{tx.dueDate}</span>
+            <span className='text-muted-foreground'>{ tx.dueDate }</span>
           </div>
         </div>
-      ))}
+      )) }
     </div>
   )
 }
@@ -102,32 +103,32 @@ function CashFlowChart() {
       <div className='flex items-center justify-between'>
         <h2 className='text-base font-semibold'>Fluxo de Caixa</h2>
         <div className='flex gap-1'>
-          {['7D', '30D', '90D', '12M'].map(period => (
+          { ['7D', '30D', '90D', '12M'].map(period => (
             <button
-              key={period}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium ${period === '30D' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50'}`}
+              key={ period }
+              className={ `rounded-md px-2.5 py-1 text-xs font-medium ${period === '30D' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50'}` }
             >
-              {period}
+              { period }
             </button>
-          ))}
+          )) }
         </div>
       </div>
-      <div className='flex items-end gap-2 rounded-lg bg-background p-4' style={{ height: 200 }}>
-        {bars.map((h, i) => (
-          <div key={months[i]} className='flex flex-1 flex-col items-center gap-1'>
-            <div className='flex w-full items-end gap-0.5' style={{ height: 140 }}>
+      <div className='flex items-end gap-2 rounded-lg bg-background p-4' style={ { height: 200 } }>
+        { bars.map((h, i) => (
+          <div key={ months[i] } className='flex flex-1 flex-col items-center gap-1'>
+            <div className='flex w-full items-end gap-0.5' style={ { height: 140 } }>
               <div
                 className='flex-1 rounded-sm bg-green-500/70'
-                style={{ height: `${h}%` }}
+                style={ { height: `${h}%` } }
               />
               <div
                 className='flex-1 rounded-sm bg-red-500/70'
-                style={{ height: `${h * 0.7}%` }}
+                style={ { height: `${h * 0.7}%` } }
               />
             </div>
-            <span className='text-[10px] text-muted-foreground'>{months[i]}</span>
+            <span className='text-[10px] text-muted-foreground'>{ months[i] }</span>
           </div>
-        ))}
+        )) }
       </div>
     </div>
   )
@@ -144,18 +145,18 @@ function UpcomingPayments() {
   return (
     <div className='flex flex-col gap-0 rounded-xl border border-border bg-card p-5'>
       <h2 className='text-base font-semibold'>Próximos Vencimentos</h2>
-      {items.map(item => (
-        <div key={item.name}>
+      { items.map(item => (
+        <div key={ item.name }>
           <Separator className='my-2' />
           <div className='flex items-center justify-between py-1'>
             <div className='flex flex-col'>
-              <span className='text-sm'>{item.name}</span>
-              <span className='text-xs text-muted-foreground'>{item.date}</span>
+              <span className='text-sm'>{ item.name }</span>
+              <span className='text-xs text-muted-foreground'>{ item.date }</span>
             </div>
-            <span className='text-sm font-semibold text-red-500'>{item.amount}</span>
+            <span className='text-sm font-semibold text-red-500'>{ item.amount }</span>
           </div>
         </div>
-      ))}
+      )) }
     </div>
   )
 }
@@ -172,41 +173,57 @@ function AlertsPanel() {
       <div className='flex items-center justify-between'>
         <h2 className='text-base font-semibold'>Alertas</h2>
         <span className='rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-500'>
-          {alerts.length}
+          { alerts.length }
         </span>
       </div>
-      {alerts.map(alert => (
-        <div key={alert.desc}>
+      { alerts.map(alert => (
+        <div key={ alert.desc }>
           <Separator className='my-2' />
           <div className='flex gap-3 py-1'>
-            <div className={`mt-1.5 size-2 shrink-0 rounded-full ${alert.severity === 'red' ? 'bg-red-500' : 'bg-amber-500'}`} />
+            <div className={ `mt-1.5 size-2 shrink-0 rounded-full ${alert.severity === 'red' ? 'bg-red-500' : 'bg-amber-500'}` } />
             <div className='flex flex-col'>
-              <span className={`text-sm font-medium ${alert.severity === 'red' ? 'text-red-500' : 'text-amber-500'}`}>
-                {alert.title}
+              <span className={ `text-sm font-medium ${alert.severity === 'red' ? 'text-red-500' : 'text-amber-500'}` }>
+                { alert.title }
               </span>
-              <span className='text-sm'>{alert.desc}</span>
-              <span className='text-xs text-muted-foreground'>{alert.date}</span>
+              <span className='text-sm'>{ alert.desc }</span>
+              <span className='text-xs text-muted-foreground'>{ alert.date }</span>
             </div>
           </div>
         </div>
-      ))}
+      )) }
     </div>
   )
 }
 
 function Dashboard() {
+  const currency = Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+  const { transactions } = useTransactions() as { transactions: Transaction[] }
+
+  const totalIncome = transactions
+    ?.filter(transaction => transaction.type === 'credit')
+    .reduce((acc, cur) => acc + cur.amount, 0) as number
+
+  const totalExpenses = transactions
+    ?.filter(transaction => transaction.type === 'debit')
+    .reduce((acc, cur) => acc + cur.amount, 0) as number
+
+  const balance = totalIncome- totalExpenses
+  const totalTransactions = transactions.length
+
+
   return (
-    <div className='flex flex-1 flex-col gap-6 p-6'>
+    <div className='flex flex-1 flex-col gap-6 p-2'>
       <div>
-        <h1 className='text-2xl font-bold text-primary m-0'>Dashboard</h1>
+        <h1 className='text-2xl font-bold'>Dashboard</h1>
         <p className='text-sm text-muted-foreground'>Visão geral do seu negócio</p>
+        <DatePicker />
       </div>
 
       <div className='grid grid-cols-4 gap-4'>
-        <StatCard title='Receita (mês)' value='R$ 42.350' trend='+12%' trendUp icon={BanknoteArrowDown} />
-        <StatCard title='Despesa (mês)' value='R$ 28.720' trend='-3%' trendUp icon={BanknoteArrowUp} />
-        <StatCard title='Saldo projetado' value='R$ 13.630' trend='Fim do mês' trendUp icon={DollarSign} />
-        <StatCard title='Transações' value='142' trend='+8%' trendUp icon={TrendingUp} />
+        <StatCard title='Receita (mês)' value={ `${currency.format(totalIncome)}` } trend='+12%' trendUp icon={ BanknoteArrowDown } />
+        <StatCard title='Despesa (mês)' value={ `${currency.format(totalExpenses)}` } trend='-3%' trendUp={ false } icon={ BanknoteArrowUp } />
+        <StatCard title='Saldo projetado' value={ currency.format(balance) } trend='Fim do mês' trendUp icon={ DollarSign } />
+        <StatCard title='Transações' value={ totalTransactions.toString() } trend='+8%' trendUp icon={ TrendingUp } />
       </div>
 
       <div className='grid grid-cols-[1fr_320px] gap-4'>
