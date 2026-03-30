@@ -17,8 +17,8 @@ import type { Transaction } from '@/lib/types/transaction.ts';
 
 export const Route = createFileRoute('/_authenticated/dashboard')({
   validateSearch: (search: Record<string, unknown>) => ({
-    from: (search.from as string) ?? dashboardInterval.to,
-    to: (search.to as string) ?? dashboardInterval.from,
+    from: (search.from) ?? dashboardInterval.from,
+    to: (search.to as string) ?? dashboardInterval.to,
   }),
   component: Dashboard,
 })
@@ -214,7 +214,7 @@ function Dashboard() {
   return (
     <div className='flex flex-1 flex-col gap-6 p-2'>
       <div>
-        <h1 className='text-2xl font-bold'>Dashboard</h1>
+        <h1 className='text-2xl font-bold text-primary'>Dashboard</h1>
         <p className='text-sm text-muted-foreground'>Visão geral do seu negócio</p>
         <DatePicker />
       </div>

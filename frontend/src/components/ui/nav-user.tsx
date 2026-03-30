@@ -94,7 +94,7 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={ logout }>
+            <DropdownMenuItem onClick={ logout } className='text-destructive hover:text-destructive'>
               <LogOutIcon
               />
               Log out
