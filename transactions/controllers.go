@@ -58,3 +58,44 @@ func (c *TransactionController) UpdateTransaction(t *Transaction) (*Transaction,
 	}
 	return c.repo.Update(t)
 }
+
+type dashboardSummary struct {
+	TotalIncome       float64 `json:"totalIncome"`
+	TotalExpenses     float64 `json:"totalExpenses"`
+	Balance           float64 `json:"balance"`
+	TotalTransactions int     `json:"totalTransactions"`
+}
+
+func (c *TransactionController) DashboardSummary(co uuid.UUID, dateRange types.Interval) (*dashboardSummary, error) {
+	txs, err := c.repo.ByCompanyAndDateRange(co, dateRange)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrTxsNotFound
+		}
+		return nil, ErrInternal
+	}
+
+	totInc := 0.0
+	for _, tx := range txs {
+		if tx.Type == TransactionTypeCredit {
+			totInc += tx.Amount
+		}
+	}
+
+	totExp := 0.0
+	for _, tx := range txs {
+		if tx.Type == TransactionTypeDebit {
+			totExp += tx.Amount
+		}
+	}
+	balance := totInc - totExp
+	totTxs := len(txs)
+
+	return &dashboardSummary{
+		TotalIncome:       totInc,
+		TotalExpenses:     totExp,
+		Balance:           balance,
+		TotalTransactions: totTxs,
+	}, nil
+}

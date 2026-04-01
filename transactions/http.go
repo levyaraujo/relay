@@ -24,6 +24,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /transactions", h.handleListTransactions)
 	mux.HandleFunc("GET /transactions/{id}", h.getByID)
 	mux.HandleFunc("PUT /transactions/{id}", h.update)
+	mux.HandleFunc("GET /dashboard/summary", h.handleDashboardSummary)
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +82,28 @@ func (h *Handler) handleListTransactions(w http.ResponseWriter, r *http.Request)
 	}
 
 	shared.JSON(w, http.StatusOK, map[string]interface{}{"transactions": txs})
-	return
+}
+
+func (h *Handler) handleDashboardSummary(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	start, _ := time.Parse(time.RFC3339, query.Get("from"))
+	end, _ := time.Parse(time.RFC3339, query.Get("to"))
+	interval := types.Interval{Start: start, End: end}
+	coID := r.Context().Value(shared.CompanyID).(uuid.UUID)
+
+	summary, err := h.ctrl.DashboardSummary(coID, interval)
+
+	if err != nil {
+		if errors.Is(err, ErrTxsNotFound) {
+			shared.JSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+			return
+		}
+
+		shared.JSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+		return
+	}
+
+	shared.JSON(w, http.StatusOK, summary)
 }
 
 func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
