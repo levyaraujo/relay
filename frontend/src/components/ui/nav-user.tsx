@@ -1,9 +1,6 @@
 import { useAuth } from '@/hooks/useAuth'
 import type { User } from '@/lib/types/user'
-import {
-  Avatar,
-  AvatarFallback
-} from '@components/ui/avatar'
+import { Avatar, AvatarFallback } from '@components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,12 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@components/ui/dropdown-menu'
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from '@components/ui/sidebar'
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, } from '@components/ui/sidebar'
 import { BadgeCheckIcon, BellIcon, ChevronsUpDownIcon, CreditCardIcon, LogOutIcon, SparklesIcon } from 'lucide-react'
 
 export function NavUser({
@@ -94,7 +86,7 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={ logout } className='text-destructive hover:text-destructive'>
+            <DropdownMenuItem onClick={ logout } className='text-destructive'>
               <LogOutIcon
               />
               Log out

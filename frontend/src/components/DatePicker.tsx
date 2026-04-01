@@ -3,11 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Field } from '@/components/ui/field'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger, } from '@/components/ui/popover'
 import { Route } from '@/pages/_authenticated/dashboard'
 import { format, parseISO } from 'date-fns'
 import { CalendarIcon } from 'lucide-react'
@@ -20,12 +16,12 @@ export function DatePicker() {
   const navigate = Route.useNavigate()
 
   const [date, setDate] = useState<DateRange | undefined>({
-    from: parseISO(from),
+    from: parseISO(from as string),
     to: parseISO(to),
   })
 
   useEffect(() => {
-    setDate({ from: parseISO(from), to: parseISO(to) })
+    setDate({ from: parseISO(from as string), to: parseISO(to) })
   }, [from, to])
 
   useEffect(() => {

@@ -1,3 +1,4 @@
+
 import { AuthService } from '@/api/AuthService';
 import { TransactionService } from '@/api/TransactionService';
 import { dashboardInterval } from '@/lib/const';
@@ -6,6 +7,7 @@ import { ThemeToggle } from '@components/ThemeToggle.tsx';
 import { SidebarProvider, SidebarTrigger } from '@components/ui/sidebar.tsx';
 import { TooltipProvider } from '@components/ui/tooltip.tsx';
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
+import axios from 'axios';
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: ({ context, location }) => {
@@ -21,17 +23,21 @@ export const Route = createFileRoute('/_authenticated')({
   loader: async ({ context: { queryClient, auth } }) => {
     try {
       await queryClient.ensureQueryData({
-        queryKey: ['transactions', dashboardInterval.from, dashboardInterval.to],
-        queryFn: () => TransactionService.getTransactionsByDateRange(dashboardInterval.from, dashboardInterval.to),
+        queryKey: ['dashboard-summary', dashboardInterval.from, dashboardInterval.to],
+        queryFn: () => TransactionService.getDashboardSummary(dashboardInterval.from, dashboardInterval.to),
       })
 
       return await queryClient.ensureQueryData({
         queryKey: ['user'],
         queryFn: AuthService.getUserData,
       })
-    } catch {
-      auth.logout()
-      throw redirect({ to: '/login' })
+    } catch (err) {
+      if (axios.isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
+        auth.logout()
+        throw redirect({ to: '/login' })
+      }
+
+      throw err
     }
   },
   component: () => <DashboardLayout />,

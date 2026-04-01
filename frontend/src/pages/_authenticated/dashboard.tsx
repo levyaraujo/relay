@@ -1,24 +1,18 @@
+import { ChartBarMultiple } from '@/components/charts/DoubleChart'
 import { DatePicker } from '@/components/DatePicker'
+import { useDashboardSummary } from '@/hooks/useTransactions.ts'
 import { dashboardInterval } from '@/lib/const'
+import { formatReal } from '@/lib/formatters'
+import type { DashboardSummary, Transaction } from '@/lib/types/transaction.ts'
 import { Separator } from '@components/ui/separator'
 import { createFileRoute } from '@tanstack/react-router'
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  BanknoteArrowDown,
-  BanknoteArrowUp,
-  DollarSign,
-  TrendingUp,
-} from 'lucide-react'
-import { useTransactions } from '@/hooks/useTransactions.ts';
-import type { Transaction } from '@/lib/types/transaction.ts';
-
+import { ArrowDownRight, ArrowUpRight, BanknoteArrowDown, BanknoteArrowUp, DollarSign, TrendingUp, } from 'lucide-react'
 
 
 export const Route = createFileRoute('/_authenticated/dashboard')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    from: (search.from) ?? dashboardInterval.from,
-    to: (search.to as string) ?? dashboardInterval.to,
+  validateSearch: (search: Record<string, unknown>): { from: string; to: string } => ({
+    from: typeof search.from === 'string' ? search.from : dashboardInterval.from,
+    to: typeof search.to === 'string' ? search.to : dashboardInterval.to,
   }),
   component: Dashboard,
 })
@@ -95,42 +89,25 @@ function TransactionsTable() {
 }
 
 function CashFlowChart() {
-  const bars = [65, 45, 80, 35, 70, 50, 90, 40, 60, 55, 85, 48]
-  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+  const data = [
+    { month: 'Jan', income: 2500, expense: 1350.95 },
+    { month: 'Fev', income: 3200, expense: 2100.50 },
+    { month: 'Mar', income: 2800, expense: 1980.00 },
+    { month: 'Abr', income: 4100, expense: 2750.30 },
+    { month: 'Mai', income: 3600, expense: 3020.75 },
+    { month: 'Jun', income: 2900, expense: 1890.40 },
+  ]
 
   return (
-    <div className='flex flex-col gap-4 rounded-xl border border-border bg-card p-5'>
-      <div className='flex items-center justify-between'>
-        <h2 className='text-base font-semibold'>Fluxo de Caixa</h2>
-        <div className='flex gap-1'>
-          { ['7D', '30D', '90D', '12M'].map(period => (
-            <button
-              key={ period }
-              className={ `rounded-md px-2.5 py-1 text-xs font-medium ${period === '30D' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50'}` }
-            >
-              { period }
-            </button>
-          )) }
-        </div>
-      </div>
-      <div className='flex items-end gap-2 rounded-lg bg-background p-4' style={ { height: 200 } }>
-        { bars.map((h, i) => (
-          <div key={ months[i] } className='flex flex-1 flex-col items-center gap-1'>
-            <div className='flex w-full items-end gap-0.5' style={ { height: 140 } }>
-              <div
-                className='flex-1 rounded-sm bg-green-500/70'
-                style={ { height: `${h}%` } }
-              />
-              <div
-                className='flex-1 rounded-sm bg-red-500/70'
-                style={ { height: `${h * 0.7}%` } }
-              />
-            </div>
-            <span className='text-[10px] text-muted-foreground'>{ months[i] }</span>
-          </div>
-        )) }
-      </div>
-    </div>
+    <ChartBarMultiple
+      title='Fluxo de Caixa'
+      description='Por intervalo'
+      data={ data }
+      labelKey='month'
+      left={ { key: 'income', label: 'Receita', color: '#22c55e' } }
+      right={ { key: 'expense', label: 'Despesa', color: '#ef4444' } }
+      valueFormatter={ formatReal }
+    />
   )
 }
 
@@ -196,19 +173,9 @@ function AlertsPanel() {
 }
 
 function Dashboard() {
-  const currency = Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-  const { transactions } = useTransactions() as { transactions: Transaction[] }
+  const { dashboardSummary } = useDashboardSummary() as { dashboardSummary: DashboardSummary }
 
-  const totalIncome = transactions
-    ?.filter(transaction => transaction.type === 'credit')
-    .reduce((acc, cur) => acc + cur.amount, 0) as number
-
-  const totalExpenses = transactions
-    ?.filter(transaction => transaction.type === 'debit')
-    .reduce((acc, cur) => acc + cur.amount, 0) as number
-
-  const balance = totalIncome- totalExpenses
-  const totalTransactions = transactions.length
+  const { totalIncome, totalExpenses, balance, totalTransactions } = dashboardSummary
 
 
   return (
@@ -220,10 +187,10 @@ function Dashboard() {
       </div>
 
       <div className='grid grid-cols-4 gap-4'>
-        <StatCard title='Receita (mês)' value={ `${currency.format(totalIncome)}` } trend='+12%' trendUp icon={ BanknoteArrowDown } />
-        <StatCard title='Despesa (mês)' value={ `${currency.format(totalExpenses)}` } trend='-3%' trendUp={ false } icon={ BanknoteArrowUp } />
-        <StatCard title='Saldo projetado' value={ currency.format(balance) } trend='Fim do mês' trendUp icon={ DollarSign } />
-        <StatCard title='Transações' value={ totalTransactions.toString() } trend='+8%' trendUp icon={ TrendingUp } />
+        <StatCard title='Receita (mês)' value={ formatReal(totalIncome) } trend='+12%' trendUp icon={ BanknoteArrowDown } />
+        <StatCard title='Despesa (mês)' value={ formatReal(totalExpenses) } trend='-3%' trendUp={ false } icon={ BanknoteArrowUp } />
+        <StatCard title='Saldo projetado' value={ formatReal(balance) } trend='Fim do mês' trendUp icon={ DollarSign } />
+        <StatCard title='Lançamentos' value={ totalTransactions.toString() } trend='+8%' trendUp icon={ TrendingUp } />
       </div>
 
       <div className='grid grid-cols-[1fr_320px] gap-4'>

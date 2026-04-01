@@ -1,22 +1,22 @@
 import { useQuery } from '@tanstack/react-query'
 import { TransactionService } from '@/api/TransactionService.ts';
-import type { Transaction } from '@/lib/types/transaction.ts';
+import type { DashboardSummary } from '@/lib/types/transaction.ts';
 import { Route } from '@/pages/_authenticated/dashboard.tsx';
 
 const minutes = 1000 * 60
 
 
-export function useTransactions() {
+export function useDashboardSummary() {
   const { from, to } = Route.useSearch()
 
-  const { data: transactions, error, isError } = useQuery<Transaction[]>({
-    queryKey: ['transactions', from, to],
-    queryFn: () => TransactionService.getTransactionsByDateRange(from, to),
+  const { data: dashboardSummary, error, isError } = useQuery<DashboardSummary>({
+    queryKey: ['dashboard-summary', from, to],
+    queryFn: () => TransactionService.getDashboardSummary(from, to),
     staleTime: 2 * minutes,
   })
 
   return {
-    transactions,
+    dashboardSummary,
     error,
     isError
   }

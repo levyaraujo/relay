@@ -12,3 +12,10 @@ export interface Transaction {
   paid_date: string
   origin: string
 }
+
+export interface DashboardSummary {
+  totalIncome: number
+  totalExpenses: number
+  balance: number
+  totalTransactions: number
+}
