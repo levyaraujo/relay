@@ -1,5 +1,6 @@
 import { ChartBarMultiple } from '@/components/charts/DoubleChart'
 import { DatePicker } from '@/components/DatePicker'
+import { useCashFlow } from '@/hooks/useCharts'
 import { useDashboardSummary } from '@/hooks/useTransactions.ts'
 import { dashboardInterval } from '@/lib/const'
 import { formatReal } from '@/lib/formatters'
@@ -7,6 +8,7 @@ import type { DashboardSummary, Transaction } from '@/lib/types/transaction.ts'
 import { Separator } from '@components/ui/separator'
 import { createFileRoute } from '@tanstack/react-router'
 import { ArrowDownRight, ArrowUpRight, BanknoteArrowDown, BanknoteArrowUp, DollarSign, TrendingUp, } from 'lucide-react'
+import { useState } from 'react'
 
 
 export const Route = createFileRoute('/_authenticated/dashboard')({
@@ -89,24 +91,28 @@ function TransactionsTable() {
 }
 
 function CashFlowChart() {
-  const data = [
-    { month: 'Jan', income: 2500, expense: 1350.95 },
-    { month: 'Fev', income: 3200, expense: 2100.50 },
-    { month: 'Mar', income: 2800, expense: 1980.00 },
-    { month: 'Abr', income: 4100, expense: 2750.30 },
-    { month: 'Mai', income: 3600, expense: 3020.75 },
-    { month: 'Jun', income: 2900, expense: 1890.40 },
-  ]
+  const rangeConfig = {
+    '7d':  { days: 7, group: 'day' },
+    '30d': { days: 30, group: 'day' },
+    '90d': { days: 90, group: 'week' },
+    '12m': { days: 365, group: 'month' },
+  } as const
+
+  const [rangeKey, setRangeKey] = useState<keyof typeof rangeConfig>('7d')
+  const { cashFlow } = useCashFlow(rangeConfig[rangeKey])
 
   return (
     <ChartBarMultiple
       title='Fluxo de Caixa'
       description='Por intervalo'
-      data={ data }
-      labelKey='month'
+      data={ cashFlow ?? [] }
+      labelKey='label'
       left={ { key: 'income', label: 'Receita', color: '#22c55e' } }
       right={ { key: 'expense', label: 'Despesa', color: '#ef4444' } }
       valueFormatter={ formatReal }
+      ranges={ Object.keys(rangeConfig) }
+      activeRange={ rangeKey }
+      onRangeChange={ (r) => setRangeKey(r as keyof typeof rangeConfig) }
     />
   )
 }

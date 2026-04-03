@@ -11,6 +11,7 @@ type TransactionRepository interface {
 	Update(t *Transaction) (*Transaction, error)
 	GetByID(id uuid.UUID) (*Transaction, error)
 	ByCompanyAndDateRange(co uuid.UUID, interval types.Interval) ([]Transaction, error)
+	CashFlow(co uuid.UUID, interval types.Interval, groupBy string) ([]CashFlowPoint, error)
 }
 
 type repository struct {
@@ -87,8 +88,8 @@ func (r *repository) ByCompanyAndDateRange(co uuid.UUID, interval types.Interval
 		       description, due_date, paid_date, origin, created_at
 		FROM transactions
 		WHERE company_id = $1
-		  AND created_at >= $2
-		  AND created_at < $3
+		  AND paid_date >= $2
+		  AND paid_date < $3
 		  AND deleted = false`,
 		co, interval.Start, interval.End,
 	)
@@ -96,4 +97,27 @@ func (r *repository) ByCompanyAndDateRange(co uuid.UUID, interval types.Interval
 		return nil, err
 	}
 	return txs, nil
+}
+
+func (r *repository) CashFlow(co uuid.UUID, interval types.Interval, groupBy string) ([]CashFlowPoint, error) {
+	var points []CashFlowPoint
+
+	err := r.db.Select(&points, `
+		SELECT
+			date_trunc($1, paid_date) AS label,
+			COALESCE(SUM(amount) FILTER (WHERE type = 1), 0) AS income,
+			COALESCE(SUM(amount) FILTER (WHERE type = 2), 0) AS expense
+		FROM transactions
+		WHERE company_id = $2
+		  AND paid_date >= $3
+		  AND paid_date < $4
+		  AND deleted = false
+		GROUP BY date_trunc($1, paid_date)
+		ORDER BY date_trunc($1, paid_date)`,
+		groupBy, co, interval.Start, interval.End,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return points, nil
 }

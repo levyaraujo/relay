@@ -3,6 +3,7 @@ package transactions
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/levyaraujo/relay/shared"
@@ -98,4 +99,36 @@ func (c *TransactionController) DashboardSummary(co uuid.UUID, dateRange types.I
 		Balance:           balance,
 		TotalTransactions: totTxs,
 	}, nil
+}
+
+type cashFlowResponse struct {
+	Label   string  `json:"label"`
+	Income  float64 `json:"income"`
+	Expense float64 `json:"expense"`
+}
+
+func (c *TransactionController) CashFlow(co uuid.UUID, interval types.Interval, groupBy string) ([]cashFlowResponse, error) {
+	points, err := c.repo.CashFlow(co, interval, groupBy)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrTxsNotFound
+		}
+		return nil, ErrInternal
+	}
+
+	result := make([]cashFlowResponse, len(points))
+	for i, p := range points {
+		var label string
+		switch groupBy {
+		case "day":
+			label = p.Label.Format("02")
+		case "week":
+			_, w := p.Label.ISOWeek()
+			label = fmt.Sprintf("S%d", w)
+		case "month":
+			label = p.Label.Format("Jan")
+		}
+		result[i] = cashFlowResponse{Label: label, Income: p.Income, Expense: p.Expense}
+	}
+	return result, nil
 }

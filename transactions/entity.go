@@ -44,3 +44,9 @@ type Transaction struct {
 	PaidDate    time.Time       `db:"paid_date" json:"paid_date"`
 	Origin      string          `db:"origin" json:"origin"`
 }
+
+type CashFlowPoint struct {
+	Label   time.Time `db:"label" json:"label"`
+	Income  float64   `db:"income" json:"income"`
+	Expense float64   `db:"expense" json:"expense"`
+}

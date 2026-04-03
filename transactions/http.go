@@ -25,6 +25,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /transactions/{id}", h.getByID)
 	mux.HandleFunc("PUT /transactions/{id}", h.update)
 	mux.HandleFunc("GET /dashboard/summary", h.handleDashboardSummary)
+	mux.HandleFunc("GET /charts/cash-flow", h.handleCashFlow)
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
@@ -128,4 +129,41 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updated)
+}
+
+func (h *Handler) handleCashFlow(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
+	start, err := time.Parse(time.RFC3339, query.Get("from"))
+	if err != nil {
+		shared.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid 'from' date"})
+		return
+	}
+
+	end, err := time.Parse(time.RFC3339, query.Get("to"))
+	if err != nil {
+		shared.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid 'to' date"})
+		return
+	}
+
+	groupBy := query.Get("group")
+	if groupBy != "day" && groupBy != "week" && groupBy != "month" {
+		shared.JSON(w, http.StatusBadRequest, map[string]string{"error": "group must be 'day', 'week', or 'month'"})
+		return
+	}
+
+	coID := r.Context().Value(shared.CompanyID).(uuid.UUID)
+	interval := types.Interval{Start: start, End: end}
+
+	points, err := h.ctrl.CashFlow(coID, interval, groupBy)
+	if err != nil {
+		if errors.Is(err, ErrTxsNotFound) {
+			shared.JSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+			return
+		}
+		shared.JSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+		return
+	}
+
+	shared.JSON(w, http.StatusOK, points)
 }

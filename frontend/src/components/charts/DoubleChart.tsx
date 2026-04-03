@@ -17,6 +17,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart'
+import { Button } from '../ui/button'
 
 interface ChartSeries<T> {
   key: keyof T & string
@@ -32,9 +33,12 @@ interface ChartBarMultipleProps<T> {
   left: ChartSeries<T>
   right: ChartSeries<T>
   valueFormatter?: (value: number) => string
+  ranges?: string[]
+  activeRange?: string
+  onRangeChange?: (range: string) => void
 }
 
-export function ChartBarMultiple<T>({ data, title, description, labelKey, left, right, valueFormatter }: ChartBarMultipleProps<T>) {
+export function ChartBarMultiple<T>({ data, title, description, labelKey, left, right, valueFormatter, ranges, activeRange, onRangeChange }: ChartBarMultipleProps<T>) {
 
   const chartConfig = {
     [left.key]: { label: left.label ?? left.key, color: left.color ?? 'var(--chart-1)' },
@@ -48,10 +52,20 @@ export function ChartBarMultiple<T>({ data, title, description, labelKey, left, 
           <CardTitle>{ title }</CardTitle>
           <CardDescription>{ description }</CardDescription>
         </div>
-        <div>
-          <CardTitle>{ title }</CardTitle>
-          <CardDescription>{ description }</CardDescription>
-        </div>
+        { ranges && (
+          <div className='flex gap-1'>
+            { ranges.map((range) => (
+              <Button
+                key={ range }
+                variant={ range === activeRange ? 'default' : 'outline' }
+                size='sm'
+                onClick={ () => onRangeChange?.(range) }
+              >
+                { range }
+              </Button>
+            )) }
+          </div>
+        ) }
       </CardHeader>
       <CardContent className='px-0'>
         <ChartContainer config={ chartConfig } className='h-80 w-full'>
