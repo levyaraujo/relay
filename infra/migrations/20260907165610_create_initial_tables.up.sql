@@ -1,0 +1,42 @@
+CREATE TYPE role as ENUM (
+  'OWNER',
+  'ADMIN',
+  'DEVELOPER'
+);
+
+
+CREATE TABLE IF NOT EXISTS users
+(
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  name VARCHAR(255) NOT NULL,
+  document VARCHAR(255) NOT NULL UNIQUE,
+  phone VARCHAR(255) UNIQUE,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS accounts
+(
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  name VARCHAR(255) NOT NULL,
+  cnpj VARCHAR(255) NOT NULL UNIQUE,
+  website VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS accounts_users
+(
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  user_id UUID NOT NULL,
+  account_id UUID NOT NULL,
+  role role NOT NULL,
+  
+  CONSTRAINT user_id_fk
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
+    ON DELETE RESTRICT,
+
+  CONSTRAINT account_id_fk
+    FOREIGN KEY (account_id)
+    REFERENCES accounts(id)
+    ON DELETE RESTRICT
+);
