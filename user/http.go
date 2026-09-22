@@ -67,16 +67,8 @@ func (h Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
 	res := SuccessResponse{Email: email}
-
-	err = json.NewEncoder(w).Encode(res)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	shared.JSONResponse(w, http.StatusCreated, res)
 }
 
 func errorResponse(err error) ErrorResponse {

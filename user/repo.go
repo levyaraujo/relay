@@ -14,6 +14,22 @@ func (r Repo) Create(u UserPayload) *sql.Row {
 	return r.db.QueryRow(insert, u.Name, u.Document, u.Phone, u.Email, u.Password)
 }
 
+func (r Repo) FindByEmail(email string) (User, error) {
+	var u User
+	query := `SELECT * FROM users WHERE email = $1`
+
+	err := r.db.QueryRow(query, email).Scan(
+		&u.ID,
+		&u.Name,
+		&u.Document,
+		&u.Phone,
+		&u.Email,
+		&u.Password,
+	)
+
+	return u, err
+}
+
 func CreateRepo(db *sql.DB) Repo {
 	return Repo{db}
 }

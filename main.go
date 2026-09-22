@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"relay/auth"
 	"relay/infra"
 	"relay/user"
 
@@ -26,10 +27,12 @@ func main() {
 	defer db.Close()
 
 	userRepo := user.CreateRepo(db)
-	createUserHandler := user.NewHandler(validate, user.NewService(userRepo)).CreateUser
+	uHandler := user.NewHandler(validate, user.NewService(userRepo))
+	authHandler := auth.NewHandler(validate, auth.NewService(userRepo))
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /users", createUserHandler)
+	mux.HandleFunc("POST /users", uHandler.CreateUser)
+	mux.HandleFunc("POST /login", authHandler.Login)
 
 	slog.Info("Server is running at :8080 🚀")
 	log.Fatal(http.ListenAndServe(":8080", middleware(mux)))
