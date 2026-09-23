@@ -9,7 +9,7 @@ type Service struct {
 	repo Repo
 }
 
-var UserRegistrationErr = errors.New("an error occurred trying to save the user")
+var UserRegistrationErr = errors.New("An error occurred trying to save the user.")
 
 func (s Service) Register(u *UserPayload) (string, error) {
 	var email string

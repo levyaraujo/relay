@@ -1,8 +1,12 @@
 CREATE TYPE role as ENUM (
   'OWNER',
   'ADMIN',
-  'DEVELOPER'
 );
+
+CREATE TYPE orgtype as ENUM(
+  'PRODUCT',
+  'SERVICE'
+)
 
 
 CREATE TABLE IF NOT EXISTS users
@@ -12,31 +16,25 @@ CREATE TABLE IF NOT EXISTS users
   document VARCHAR(255) NOT NULL UNIQUE,
   phone VARCHAR(255) UNIQUE,
   email VARCHAR(255) NOT NULL UNIQUE,
-  password VARCHAR(255) NOT NULL UNIQUE
+  password VARCHAR(255) NOT NULL UNIQUE,
+  organization_id UUID NOT NULL,
+  role role NOT NULL DEFAULT 'OWNER',
+
+  CONSTRAINT organization_id_fk
+    FOREIGN KEY (organization_id)
+    REFERENCES organizations(id)
+    ON DELETE RESTRICT
 );
 
-CREATE TABLE IF NOT EXISTS accounts
+CREATE TABLE IF NOT EXISTS organizations
 (
   id UUID PRIMARY KEY DEFAULT uuidv7(),
   name VARCHAR(255) NOT NULL,
-  cnpj VARCHAR(255) NOT NULL UNIQUE,
-  website VARCHAR(255)
-);
-
-CREATE TABLE IF NOT EXISTS accounts_users
-(
-  id UUID PRIMARY KEY DEFAULT uuidv7(),
-  user_id UUID NOT NULL,
-  account_id UUID NOT NULL,
-  role role NOT NULL,
-  
-  CONSTRAINT user_id_fk
-    FOREIGN KEY (user_id)
-    REFERENCES users(id)
-    ON DELETE RESTRICT,
-
-  CONSTRAINT account_id_fk
-    FOREIGN KEY (account_id)
-    REFERENCES accounts(id)
-    ON DELETE RESTRICT
+  website VARCHAR(255),
+  phone VARCHAR UNIQUE NOT NULL,
+  email VARCHAR UNIQUE NOT NULL,
+  tax_id VARCHAR UNIQUE NOT NULL,
+  currency VARCHAR NOT NULL DEFAULT 'BRL',
+  type orgtype NOT NULL,
+  description VARCHAR
 );

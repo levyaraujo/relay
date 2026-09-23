@@ -1,7 +1,5 @@
 package user
 
-import "fmt"
-
 type Role int
 
 const (
@@ -18,8 +16,4 @@ var roleName = map[Role]string{
 
 func (r Role) String() string {
 	return roleName[r]
-}
-
-func main() {
-	fmt.Println(OWNER)
 }
