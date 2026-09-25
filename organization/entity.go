@@ -5,17 +5,17 @@ import "uuid"
 type OrgType int
 
 const (
-	PRODUCT OrgType = iota
-	SERVICE
+	PRODUCTS OrgType = iota
+	SERVICES
 )
 
-var roleName = map[OrgType]string{
-	PRODUCT: "OWNER",
-	SERVICE: "ADMIN",
+var typeName = map[OrgType]string{
+	PRODUCTS: "PRODUCTS",
+	SERVICES: "SERVICES",
 }
 
 func (r OrgType) String() string {
-	return roleName[r]
+	return typeName[r]
 }
 
 type Organization struct {

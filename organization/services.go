@@ -11,13 +11,26 @@ type Service struct {
 }
 
 var InvalidCNPJErr = errors.New("The CNPJ provided is invalid.")
+var InvalidOrgTypeErr = errors.New("The organization type is invalid. It must be one of the allowed values: SERVICES or PRODUCTS.")
 
 func (s Service) Create(o Organization) (string, error) {
 	if ValidateCNPJ(o.TaxID) == false {
 		return "", InvalidCNPJErr
 	}
 
+	err := ValidateOrgType(o.Type)
+	if err != nil {
+		return "", err
+	}
+
 	return o.Email, nil
+}
+
+func ValidateOrgType(t OrgType) error {
+	if _, ok := typeName[t]; !ok {
+		return InvalidOrgTypeErr
+	}
+	return nil
 }
 
 func ValidateCNPJ(cnpj string) bool {

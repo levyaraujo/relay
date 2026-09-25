@@ -21,4 +21,24 @@ func TestOrganization(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("validate organization type", func(t *testing.T) {
+		tests := []struct {
+			oType int
+			want  error
+		}{
+			{2, InvalidOrgTypeErr},
+			{3, InvalidOrgTypeErr},
+			{0, nil},
+			{1, nil},
+		}
+
+		for _, tt := range tests {
+			got := ValidateOrgType(OrgType(tt.oType))
+
+			if got != tt.want {
+				t.Errorf("got %t, want %t", got, tt.want)
+			}
+		}
+	})
 }
