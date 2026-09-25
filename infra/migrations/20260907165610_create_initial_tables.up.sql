@@ -4,8 +4,8 @@ CREATE TYPE role as ENUM (
 );
 
 CREATE TYPE orgtype as ENUM(
-  'PRODUCT',
-  'SERVICE'
+  'PRODUCTS',
+  'SERVICES'
 )
 
 
