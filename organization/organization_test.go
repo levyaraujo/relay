@@ -22,6 +22,28 @@ func TestOrganization(t *testing.T) {
 		}
 	})
 
+	t.Run("cpf validation", func(t *testing.T) {
+		tests := []struct {
+			cpf  string
+			want bool
+		}{
+			{"52998224725", true},
+			{"529.982.247-25", true},
+			{"52998224724", false},
+			{"5299822472", false},
+			{"5299822472A", false},
+			{"11111111111", false},
+		}
+
+		for _, tt := range tests {
+			got := ValidateCPF(tt.cpf)
+
+			if got != tt.want {
+				t.Errorf("got %t, want %t", got, tt.want)
+			}
+		}
+	})
+
 	t.Run("validate organization type", func(t *testing.T) {
 		tests := []struct {
 			oType int

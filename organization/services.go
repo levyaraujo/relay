@@ -10,12 +10,12 @@ type Service struct {
 	repo Repo
 }
 
-var InvalidCNPJErr = errors.New("The CNPJ provided is invalid.")
+var InvalidTaxIDErr = errors.New("The CNPJ or CPF provided is invalid.")
 var InvalidOrgTypeErr = errors.New("The organization type is invalid. It must be one of the allowed values: SERVICES or PRODUCTS.")
 
 func (s Service) Create(o Organization) (string, error) {
-	if ValidateCNPJ(o.TaxID) == false {
-		return "", InvalidCNPJErr
+	if !ValidateCNPJ(o.TaxID) && !ValidateCPF(o.TaxID) {
+		return "", InvalidTaxIDErr
 	}
 
 	err := ValidateOrgType(o.Type)
@@ -90,4 +90,58 @@ func ValidateCNPJ(cnpj string) bool {
 
 	// 4. Verificação final dos dígitos informados no CNPJ
 	return int(cleanCNPJ[12]-'0') == dv1 && int(cleanCNPJ[13]-'0') == dv2
+}
+
+func ValidateCPF(cpf string) bool {
+	var sb strings.Builder
+	for _, r := range cpf {
+		if r >= '0' && r <= '9' {
+			sb.WriteRune(r)
+			continue
+		}
+
+		if unicode.IsLetter(r) {
+			return false
+		}
+	}
+
+	cleanCPF := sb.String()
+	if len(cleanCPF) != 11 {
+		return false
+	}
+
+	allEqual := true
+	for i := 1; i < len(cleanCPF); i++ {
+		if cleanCPF[i] != cleanCPF[0] {
+			allEqual = false
+			break
+		}
+	}
+	if allEqual {
+		return false
+	}
+
+	soma1 := 0
+	for i := 0; i < 9; i++ {
+		soma1 += int(cleanCPF[i]-'0') * (10 - i)
+	}
+
+	resto1 := soma1 % 11
+	dv1 := 0
+	if resto1 >= 2 {
+		dv1 = 11 - resto1
+	}
+
+	soma2 := 0
+	for i := 0; i < 10; i++ {
+		soma2 += int(cleanCPF[i]-'0') * (11 - i)
+	}
+
+	resto2 := soma2 % 11
+	dv2 := 0
+	if resto2 >= 2 {
+		dv2 = 11 - resto2
+	}
+
+	return int(cleanCPF[9]-'0') == dv1 && int(cleanCPF[10]-'0') == dv2
 }
