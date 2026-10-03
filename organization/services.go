@@ -3,34 +3,38 @@ package organization
 import (
 	"errors"
 	"log/slog"
+	"regexp"
+	"relay/password"
 	"strings"
 	"unicode"
-	"uuid"
 )
 
+type repository interface {
+	CreateWithOwner(CreateOrganizationPayload) error
+}
+
 type Service struct {
-	repo Repo
+	repo repository
 }
 
 var InvalidTaxIDErr = errors.New("The CNPJ or CPF provided is invalid.")
 var InvalidOrgTypeErr = errors.New("The organization type is invalid. It must be one of the allowed values: SERVICES or PRODUCTS.")
 var OrgRegistrationErr = errors.New("An error occurred trying to save the organization.")
 
-func (s Service) Create(o OrganizationPayload) error {
-	var orgId uuid.UUID
-
-	if !ValidateCNPJ(o.TaxID) && !ValidateCPF(o.TaxID) {
+func (s Service) Create(payload CreateOrganizationPayload) error {
+	if !ValidateCNPJ(payload.Organization.TaxID) && !ValidateCPF(payload.Organization.TaxID) {
 		return InvalidTaxIDErr
 	}
 
-	err := ValidateOrgType(o.Type)
+	err := ValidateOrgType(payload.Organization.Type)
 	if err != nil {
 		return err
 	}
 
-	row := s.repo.Create(o)
-
-	if err := row.Scan(&orgId); err != nil {
+	payload.User.Password = password.HashPassword(payload.User.Password)
+	payload.User.Document = RemoveSpecialChars(payload.User.Document)
+	payload.Organization.TaxID = RemoveSpecialChars(payload.Organization.TaxID)
+	if err := s.repo.CreateWithOwner(payload); err != nil {
 		slog.Error("organization.Create", "err", err.Error())
 		return OrgRegistrationErr
 	}
@@ -39,7 +43,7 @@ func (s Service) Create(o OrganizationPayload) error {
 }
 
 func ValidateOrgType(t OrgType) error {
-	if _, ok := typeName[t]; !ok {
+	if t != "PRODUCTS" && t != "SERVICES" {
 		return InvalidOrgTypeErr
 	}
 	return nil
@@ -156,6 +160,13 @@ func ValidateCPF(cpf string) bool {
 	}
 
 	return int(cleanCPF[9]-'0') == dv1 && int(cleanCPF[10]-'0') == dv2
+}
+
+func RemoveSpecialChars(s string) string {
+	reg, _ := regexp.Compile("[^a-zA-Z0-9 ]+")
+	cleanStr := reg.ReplaceAllString(s, " ")
+	cleanStr = strings.ReplaceAll(cleanStr, " ", "")
+	return cleanStr
 }
 
 func NewService(r Repo) *Service {

@@ -2,21 +2,12 @@ package organization
 
 import "uuid"
 
-type OrgType int
+type OrgType string
 
 const (
-	PRODUCTS OrgType = iota
-	SERVICES
+	PRODUCTS OrgType = "PRODUCTS"
+	SERVICES         = "SERVICES"
 )
-
-var typeName = map[OrgType]string{
-	PRODUCTS: "PRODUCTS",
-	SERVICES: "SERVICES",
-}
-
-func (r OrgType) String() string {
-	return typeName[r]
-}
 
 type Organization struct {
 	ID          uuid.UUID

@@ -35,5 +35,5 @@ CREATE TABLE IF NOT EXISTS users
   CONSTRAINT organization_id_fk
     FOREIGN KEY (organization_id)
     REFERENCES organizations(id)
-    ON DELETE RESTRICT
+    ON DELETE CASCADE
 );
