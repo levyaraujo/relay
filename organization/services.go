@@ -3,6 +3,7 @@ package organization
 import (
 	"errors"
 	"log/slog"
+	"regexp"
 	"relay/password"
 	"strings"
 	"unicode"
@@ -31,6 +32,7 @@ func (s Service) Create(payload CreateOrganizationPayload) error {
 	}
 
 	payload.User.Password = password.HashPassword(payload.User.Password)
+	payload.Organization.TaxID = RemoveSpecialChars(payload.Organization.TaxID)
 	if err := s.repo.CreateWithOwner(payload); err != nil {
 		slog.Error("organization.Create", "err", err.Error())
 		return OrgRegistrationErr
@@ -157,6 +159,13 @@ func ValidateCPF(cpf string) bool {
 	}
 
 	return int(cleanCPF[9]-'0') == dv1 && int(cleanCPF[10]-'0') == dv2
+}
+
+func RemoveSpecialChars(s string) string {
+	reg, _ := regexp.Compile("[^a-zA-Z0-9 ]+")
+	cleanStr := reg.ReplaceAllString(s, " ")
+
+	return cleanStr
 }
 
 func NewService(r Repo) *Service {
