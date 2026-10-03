@@ -2,8 +2,10 @@ package organization
 
 import (
 	"errors"
+	"log/slog"
 	"strings"
 	"unicode"
+	"uuid"
 )
 
 type Service struct {
@@ -12,18 +14,28 @@ type Service struct {
 
 var InvalidTaxIDErr = errors.New("The CNPJ or CPF provided is invalid.")
 var InvalidOrgTypeErr = errors.New("The organization type is invalid. It must be one of the allowed values: SERVICES or PRODUCTS.")
+var OrgRegistrationErr = errors.New("An error occurred trying to save the organization.")
 
-func (s Service) Create(o Organization) (string, error) {
+func (s Service) Create(o OrganizationPayload) error {
+	var orgId uuid.UUID
+
 	if !ValidateCNPJ(o.TaxID) && !ValidateCPF(o.TaxID) {
-		return "", InvalidTaxIDErr
+		return InvalidTaxIDErr
 	}
 
 	err := ValidateOrgType(o.Type)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return o.Email, nil
+	row := s.repo.Create(o)
+
+	if err := row.Scan(&orgId); err != nil {
+		slog.Error("organization.Create", "err", err.Error())
+		return OrgRegistrationErr
+	}
+
+	return nil
 }
 
 func ValidateOrgType(t OrgType) error {
@@ -144,4 +156,8 @@ func ValidateCPF(cpf string) bool {
 	}
 
 	return int(cleanCPF[9]-'0') == dv1 && int(cleanCPF[10]-'0') == dv2
+}
+
+func NewService(r Repo) *Service {
+	return &Service{repo: r}
 }

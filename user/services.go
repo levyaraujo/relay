@@ -2,6 +2,7 @@ package user
 
 import (
 	"errors"
+	"log/slog"
 	"relay/password"
 )
 
@@ -17,6 +18,7 @@ func (s Service) Register(u *UserPayload) (string, error) {
 	u.Password = password.HashPassword(u.Password)
 	row := s.repo.Create(*u)
 	if err := row.Scan(&email); err != nil {
+		slog.Error("user.Create", "err", err.Error())
 		return "", UserRegistrationErr
 	}
 
