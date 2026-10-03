@@ -22,12 +22,6 @@ func NewHandler(v *validator.Validate, s *Service) *Handler {
 	}
 }
 
-type ValidationErrResponse struct {
-	Title      string            `json:"title"`
-	Details    string            `json:"details"`
-	Validation map[string]string `json:"validation"`
-}
-
 type OrganizationPayload struct {
 	Name        string  `json:"name" validate:"required"`
 	Website     string  `json:"website"`
@@ -63,7 +57,11 @@ func (h Handler) CreateOrganization(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.validate.Struct(payload); err != nil {
-		shared.JSONResponse(w, http.StatusBadRequest, validationResponse(err))
+		shared.JSONResponse(
+			w,
+			http.StatusBadRequest,
+			shared.ValidationResponse(err, errorMessage),
+		)
 		return
 	}
 
@@ -92,23 +90,6 @@ func errorMessage(fe validator.FieldError) string {
 
 	default:
 		return fmt.Sprintf("Field validation failed on '%s'", fe.Tag())
-	}
-}
-
-func validationResponse(err error) ValidationErrResponse {
-	var validationErrors validator.ValidationErrors
-	validation := make(map[string]string)
-
-	if errors.As(err, &validationErrors) {
-		for _, fieldError := range validationErrors {
-			validation[fieldError.Field()] = errorMessage(fieldError)
-		}
-	}
-
-	return ValidationErrResponse{
-		Title:      "The payload is invalid",
-		Details:    "The payload has one or more validation errors, please fix them and try again.",
-		Validation: validation,
 	}
 }
 
