@@ -42,7 +42,7 @@ func (s Service) Create(payload CreateOrganizationPayload) error {
 }
 
 func ValidateOrgType(t OrgType) error {
-	if _, ok := typeName[t]; !ok {
+	if t != "PRODUCTS" && t != "SERVICES" {
 		return InvalidOrgTypeErr
 	}
 	return nil
