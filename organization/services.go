@@ -32,6 +32,7 @@ func (s Service) Create(payload CreateOrganizationPayload) error {
 	}
 
 	payload.User.Password = password.HashPassword(payload.User.Password)
+	payload.User.Document = RemoveSpecialChars(payload.User.Document)
 	payload.Organization.TaxID = RemoveSpecialChars(payload.Organization.TaxID)
 	if err := s.repo.CreateWithOwner(payload); err != nil {
 		slog.Error("organization.Create", "err", err.Error())

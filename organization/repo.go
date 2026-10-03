@@ -10,7 +10,7 @@ type Repo struct {
 
 func (r Repo) Create(o OrganizationPayload) *sql.Row {
 	insert := `INSERT INTO organizations (name, website, phone, email, tax_id, currency, type, description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
-	return r.db.QueryRow(insert, o.Name, o.Website, o.Phone, o.Email, o.TaxID, o.Currency, o.Type.String(), o.Description)
+	return r.db.QueryRow(insert, o.Name, o.Website, o.Phone, o.Email, o.TaxID, o.Currency, o.Type, o.Description)
 }
 
 func (r Repo) CreateWithOwner(payload CreateOrganizationPayload) error {
@@ -31,7 +31,7 @@ func (r Repo) CreateWithOwner(payload CreateOrganizationPayload) error {
 		organization.Email,
 		organization.TaxID,
 		organization.Currency,
-		organization.Type.String(),
+		organization.Type,
 		organization.Description,
 	).Scan(&organizationID)
 	if err != nil {
