@@ -165,7 +165,7 @@ func ValidateCPF(cpf string) bool {
 func RemoveSpecialChars(s string) string {
 	reg, _ := regexp.Compile("[^a-zA-Z0-9 ]+")
 	cleanStr := reg.ReplaceAllString(s, " ")
-
+	strings.ReplaceAll(cleanStr, " ", "")
 	return cleanStr
 }
 
