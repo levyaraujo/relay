@@ -28,10 +28,6 @@ type ValidationErrResponse struct {
 	Validation map[string]string `json:"validation"`
 }
 
-type SuccessResponse struct {
-	Message string `json:"message"`
-}
-
 type OrganizationPayload struct {
 	Name        string  `json:"name" validate:"required"`
 	Website     string  `json:"website"`
@@ -76,9 +72,11 @@ func (h Handler) CreateOrganization(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shared.JSONResponse(w, http.StatusCreated, SuccessResponse{
-		Message: fmt.Sprintf("The organization %s was created successfully!", payload.Organization.Name),
-	})
+	shared.JSONSuccess(
+		w,
+		http.StatusCreated,
+		fmt.Sprintf("The organization %s was created successfully!", payload.Organization.Name),
+	)
 }
 
 func errorMessage(fe validator.FieldError) string {
