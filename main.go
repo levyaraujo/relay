@@ -66,8 +66,12 @@ func setupEndpoints(db *sql.DB) *http.ServeMux {
 	authHandler := auth.NewHandler(validate, auth.NewService(userRepo))
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /users", uHandler.CreateUser)
-	mux.HandleFunc("POST /login", authHandler.Login)
-	mux.HandleFunc("POST /organizations", orgHandler.CreateOrganization)
+	apiMux := http.NewServeMux()
+
+	apiMux.HandleFunc("POST /users", uHandler.CreateUser)
+	apiMux.HandleFunc("POST /login", authHandler.Login)
+	apiMux.HandleFunc("POST /organizations", orgHandler.CreateOrganization)
+
+	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiMux))
 	return mux
 }
