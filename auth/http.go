@@ -1,11 +1,16 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"relay/shared"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
 )
 
 type LoginPayload struct {
@@ -63,4 +68,34 @@ func (h Handler) Login(w http.ResponseWriter, r *http.Request) {
 	res := JWTResponse{AccessToken: t}
 
 	shared.JSONResponse(w, http.StatusOK, res)
+}
+
+type Claims struct {
+	Sub string `json:"sub"`
+	jwt.Claims
+}
+
+func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	godotenv.Load("../.env")
+	SECRET := os.Getenv("SECRET_KEY")
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		claims := &Claims{}
+		token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
+			return SECRET, nil
+		})
+		if err != nil || !token.Valid {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+		// Add username to context for downstream use
+		ctx := context.WithValue(r.Context(), "userId", claims.Sub)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	}
 }

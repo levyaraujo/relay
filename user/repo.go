@@ -25,6 +25,8 @@ func (r Repo) FindByEmail(email string) (User, error) {
 		&u.Phone,
 		&u.Email,
 		&u.Password,
+		&u.OrganizationID,
+		&u.Role,
 	)
 
 	return u, err

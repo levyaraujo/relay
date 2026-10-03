@@ -1,25 +1,17 @@
 package user
 
-import "fmt"
-
-type Role int
+type Role string
 
 const (
-	OWNER Role = iota
-	ADMIN
-	DEVELOPER
+	OWNER Role = "OWNER"
+	ADMIN Role = "ADMIN"
 )
 
 var roleName = map[Role]string{
-	OWNER:     "OWNER",
-	ADMIN:     "ADMIN",
-	DEVELOPER: "DEVELOPER",
+	OWNER: "OWNER",
+	ADMIN: "ADMIN",
 }
 
 func (r Role) String() string {
 	return roleName[r]
-}
-
-func main() {
-	fmt.Println(OWNER)
 }
