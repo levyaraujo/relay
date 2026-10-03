@@ -47,17 +47,30 @@ type OrganizationPayload struct {
 	Description string  `json:"description"`
 }
 
-func (h Handler) CreateOrganization(w http.ResponseWriter, r *http.Request) {
-	var org OrganizationPayload
+type UserPayload struct {
+	Name     string `json:"name" validate:"required"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,gte=8,lte=64"`
+	Document string `json:"document" validate:"required"`
+	Phone    string `json:"phone" validate:"number"`
+}
 
-	err := json.NewDecoder(r.Body).Decode(&org)
+type CreateOrganizationPayload struct {
+	Organization OrganizationPayload `json:"organization" validate:"required"`
+	User         UserPayload         `json:"user" validate:"required"`
+}
+
+func (h Handler) CreateOrganization(w http.ResponseWriter, r *http.Request) {
+	var payload CreateOrganizationPayload
+
+	err := json.NewDecoder(r.Body).Decode(&payload)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = h.validate.Struct(org)
+	err = h.validate.Struct(payload)
 
 	if err != nil {
 		errRes := errorResponse(err)
@@ -66,7 +79,7 @@ func (h Handler) CreateOrganization(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.service.Create(org)
+	err = h.service.Create(payload)
 
 	if err != nil {
 		errMsg, status := statusFromOrganizationError(err)
@@ -76,7 +89,7 @@ func (h Handler) CreateOrganization(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := SuccessResponse{Message: fmt.Sprintf("The organization %s was created successfully!", org.Name)}
+	res := SuccessResponse{Message: fmt.Sprintf("The organization %s was created successfully!", payload.Organization.Name)}
 	shared.JSONResponse(w, http.StatusCreated, res)
 }
 
