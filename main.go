@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"log/slog"
 	"net/http"
@@ -39,16 +40,7 @@ func main() {
 	}
 	defer db.Close()
 
-	userRepo := user.CreateRepo(db)
-	orgRepo := organization.CreateRepo(db)
-	orgHandler := organization.NewHandler(validate, organization.NewService(orgRepo))
-	uHandler := user.NewHandler(validate, user.NewService(userRepo))
-	authHandler := auth.NewHandler(validate, auth.NewService(userRepo))
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /users", uHandler.CreateUser)
-	mux.HandleFunc("POST /login", authHandler.Login)
-	mux.HandleFunc("POST /organizations", orgHandler.CreateOrganization)
+	mux := setupEndpoints(db)
 
 	slog.Info("Server is running at :8080 🚀")
 	log.Fatal(http.ListenAndServe(":8080", middleware(mux)))
@@ -64,4 +56,18 @@ func middleware(next http.Handler) http.Handler {
 		)
 		next.ServeHTTP(w, r)
 	})
+}
+
+func setupEndpoints(db *sql.DB) *http.ServeMux {
+	userRepo := user.CreateRepo(db)
+	orgRepo := organization.CreateRepo(db)
+	orgHandler := organization.NewHandler(validate, organization.NewService(orgRepo))
+	uHandler := user.NewHandler(validate, user.NewService(userRepo))
+	authHandler := auth.NewHandler(validate, auth.NewService(userRepo))
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /users", uHandler.CreateUser)
+	mux.HandleFunc("POST /login", authHandler.Login)
+	mux.HandleFunc("POST /organizations", orgHandler.CreateOrganization)
+	return mux
 }
