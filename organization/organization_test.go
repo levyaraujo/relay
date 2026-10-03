@@ -53,13 +53,13 @@ func TestOrganization(t *testing.T) {
 
 	t.Run("validate organization type", func(t *testing.T) {
 		tests := []struct {
-			oType int
+			oType string
 			want  error
 		}{
-			{2, InvalidOrgTypeErr},
-			{3, InvalidOrgTypeErr},
-			{0, nil},
-			{1, nil},
+			{"nada", InvalidOrgTypeErr},
+			{"MARKETING", InvalidOrgTypeErr},
+			{"SERVICES", nil},
+			{"PRODUCTS", nil},
 		}
 
 		for _, tt := range tests {
@@ -130,7 +130,7 @@ func TestCreateOrganizationAcceptsOrganizationAndOwnerInOneRequest(t *testing.T)
 			"name": "Acme",
 			"email": "org@example.com",
 			"taxId": "57082641000150",
-			"type": 0
+			"type": "SERVICES"
 		},
 		"user": {
 			"name": "Owner",
