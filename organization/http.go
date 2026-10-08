@@ -22,20 +22,6 @@ func NewHandler(v *validator.Validate, s *Service) *Handler {
 	}
 }
 
-type ValidationErrResponse struct {
-	Title      string            `json:"title"`
-	Details    string            `json:"details"`
-	Validation map[string]string `json:"validation"`
-}
-
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
-type SuccessResponse struct {
-	Message string `json:"message"`
-}
-
 type OrganizationPayload struct {
 	Name        string  `json:"name" validate:"required"`
 	Website     string  `json:"website"`
@@ -66,31 +52,29 @@ func (h Handler) CreateOrganization(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&payload)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		shared.JSONError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	err = h.validate.Struct(payload)
-
-	if err != nil {
-		errRes := errorResponse(err)
-
-		shared.JSONResponse(w, http.StatusBadRequest, errRes)
+	if err := h.validate.Struct(payload); err != nil {
+		shared.JSONResponse(
+			w,
+			http.StatusBadRequest,
+			shared.ValidationResponse(err, errorMessage),
+		)
 		return
 	}
 
-	err = h.service.Create(payload)
-
-	if err != nil {
-		errMsg, status := statusFromOrganizationError(err)
-		res := ErrorResponse{Error: errMsg}
-
-		shared.JSONResponse(w, status, res)
+	if err := h.service.Create(payload); err != nil {
+		writeOrganizationError(w, err)
 		return
 	}
 
-	res := SuccessResponse{Message: fmt.Sprintf("The organization %s was created successfully!", payload.Organization.Name)}
-	shared.JSONResponse(w, http.StatusCreated, res)
+	shared.JSONSuccess(
+		w,
+		http.StatusCreated,
+		fmt.Sprintf("The organization %s was created successfully!", payload.Organization.Name),
+	)
 }
 
 func errorMessage(fe validator.FieldError) string {
@@ -109,35 +93,14 @@ func errorMessage(fe validator.FieldError) string {
 	}
 }
 
-func errorResponse(err error) ValidationErrResponse {
-	var ve validator.ValidationErrors
-	validation := make(map[string]string)
+func writeOrganizationError(w http.ResponseWriter, err error) {
+	status := http.StatusInternalServerError
 
-	if errors.As(err, &ve) {
-		for _, fe := range ve {
-			msg := errorMessage(fe)
-			field := fe.Field()
-			validation[field] = msg
-		}
-	}
-	errRes := ValidationErrResponse{
-		Title:      "The payload is invalid",
-		Details:    "The payload has one or more validation errors, please fix them and try again.",
-		Validation: validation,
-	}
-	return errRes
-}
-
-func statusFromOrganizationError(err error) (string, int) {
 	switch {
 	case errors.Is(err, InvalidTaxIDErr),
 		errors.Is(err, InvalidOrgTypeErr):
-		return err.Error(), http.StatusBadRequest
-
-	case errors.Is(err, OrgRegistrationErr):
-		return err.Error(), http.StatusInternalServerError
-
-	default:
-		return err.Error(), http.StatusInternalServerError
+		status = http.StatusBadRequest
 	}
+
+	shared.JSONError(w, status, err)
 }

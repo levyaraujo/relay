@@ -1,0 +1,948 @@
+openapi: 3.0.3
+info:
+  title: Relay API
+  version: 1.0.0
+  description: |
+    Organization-scoped API for Relay's onboarding, parties, catalog,
+    transactions, obligations, and payments.
+
+    Audit events are processed asynchronously through the internal outbox;
+    there is no public audit endpoint.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development API
+tags:
+  - name: Authentication
+  - name: Organizations
+  - name: Users
+  - name: Parties
+  - name: Catalog
+  - name: Transactions
+  - name: Obligations
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    UUID:
+      type: string
+      format: uuid
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    ValidationErrorResponse:
+      type: object
+      required: [title, details, validation]
+      properties:
+        title:
+          type: string
+          example: The payload is invalid
+        details:
+          type: string
+          example: The payload has one or more validation errors, please fix them and try again.
+        validation:
+          type: object
+          additionalProperties:
+            type: string
+    SuccessResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    LoginErrorResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    JWTResponse:
+      type: object
+      required: [accessToken]
+      properties:
+        accessToken:
+          type: string
+    OrganizationPayload:
+      type: object
+      required: [name, email, taxId, type]
+      properties:
+        name:
+          type: string
+        website:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        taxId:
+          type: string
+          description: CPF or CNPJ. It is normalized before persistence.
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: BRL
+        type:
+          type: string
+          enum: [PRODUCTS, SERVICES]
+        description:
+          type: string
+    UserPayload:
+      type: object
+      required: [name, email, password, document]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 64
+        document:
+          type: string
+        phone:
+          type: string
+          pattern: '^[0-9]+$'
+    CreateOrganizationRequest:
+      type: object
+      required: [organization, user]
+      properties:
+        organization:
+          $ref: '#/components/schemas/OrganizationPayload'
+        user:
+          $ref: '#/components/schemas/UserPayload'
+    CreateUserResponse:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    PartyRole:
+      type: string
+      enum: [CUSTOMER, SUPPLIER]
+    Party:
+      type: object
+      required: [id, organizationId, name, email, phone, document, roles]
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        organizationId:
+          $ref: '#/components/schemas/UUID'
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        document:
+          type: string
+        roles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/PartyRole'
+    CreatePartyRequest:
+      type: object
+      required: [name, document, roles]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        document:
+          type: string
+          description: CPF or CNPJ.
+        roles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/PartyRole'
+    ItemKind:
+      type: string
+      enum: [PRODUCT, SERVICE]
+    Item:
+      type: object
+      required: [id, organizationId, name, description, kind, defaultPriceCents, currency]
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        organizationId:
+          $ref: '#/components/schemas/UUID'
+        name:
+          type: string
+        description:
+          type: string
+        kind:
+          $ref: '#/components/schemas/ItemKind'
+        defaultPriceCents:
+          type: integer
+          format: int64
+          minimum: 0
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: BRL
+    CreateItemRequest:
+      type: object
+      required: [name, kind]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        kind:
+          $ref: '#/components/schemas/ItemKind'
+        defaultPriceCents:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: BRL
+    TransactionType:
+      type: string
+      enum: [SALE, PURCHASE, EXPENSE]
+    TransactionStatus:
+      type: string
+      enum: [CONFIRMED, CANCELLED]
+    ObligationDirection:
+      type: string
+      enum: [RECEIVABLE, PAYABLE]
+    ObligationStatus:
+      type: string
+      enum: [OPEN, PARTIALLY_PAID, PAID, CANCELLED]
+    PaymentMethod:
+      type: string
+      enum: [PIX, CASH, BANK_TRANSFER, CARD, OTHER]
+    TransactionLine:
+      type: object
+      required: [id, transactionId, description, quantity, unitPriceCents, totalCents]
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        transactionId:
+          $ref: '#/components/schemas/UUID'
+        itemId:
+          allOf:
+            - $ref: '#/components/schemas/UUID'
+          nullable: true
+        description:
+          type: string
+        quantity:
+          type: integer
+          format: int64
+          minimum: 1
+        unitPriceCents:
+          type: integer
+          format: int64
+          minimum: 0
+        totalCents:
+          type: integer
+          format: int64
+          minimum: 0
+    CreateTransactionLineRequest:
+      type: object
+      description: For SALE and PURCHASE, itemId is required. EXPENSE lines may omit itemId when description is provided.
+      required: [quantity, unitPriceCents]
+      properties:
+        itemId:
+          $ref: '#/components/schemas/UUID'
+        description:
+          type: string
+          description: Required for descriptive expense lines without an item.
+        quantity:
+          type: integer
+          format: int64
+          minimum: 1
+        unitPriceCents:
+          type: integer
+          format: int64
+          minimum: 0
+    CreateTransactionRequest:
+      type: object
+      description: |
+        Creates the transaction, its transaction lines, and one obligation atomically.
+        SALE requires a Customer party; PURCHASE requires a Supplier party; EXPENSE may omit partyId.
+        Totals, status, organizationId, and identifiers are calculated or assigned by the server.
+      required: [type, lines]
+      properties:
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        partyId:
+          allOf:
+            - $ref: '#/components/schemas/UUID'
+          nullable: true
+        occurredAt:
+          type: string
+          format: date-time
+          description: Defaults to the current time when omitted.
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: BRL
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CreateTransactionLineRequest'
+        initialPayment:
+          allOf:
+            - $ref: '#/components/schemas/CreatePaymentRequest'
+          nullable: true
+    Payment:
+      type: object
+      required: [id, obligationId, organizationId, amountCents, paidAt, method, reference]
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        obligationId:
+          $ref: '#/components/schemas/UUID'
+        organizationId:
+          $ref: '#/components/schemas/UUID'
+        amountCents:
+          type: integer
+          format: int64
+          minimum: 1
+        paidAt:
+          type: string
+          format: date-time
+        method:
+          $ref: '#/components/schemas/PaymentMethod'
+        reference:
+          type: string
+    CreatePaymentRequest:
+      type: object
+      description: Payments are applied atomically and cannot exceed the obligation's outstanding balance.
+      required: [amountCents, method]
+      properties:
+        amountCents:
+          type: integer
+          format: int64
+          minimum: 1
+        paidAt:
+          type: string
+          format: date-time
+          description: Defaults to the current time when omitted.
+        method:
+          $ref: '#/components/schemas/PaymentMethod'
+        reference:
+          type: string
+    Transaction:
+      type: object
+      description: The totalCents, status, organizationId, and identifiers are controlled by the server.
+      required: [id, organizationId, type, status, occurredAt, description, currency, totalCents]
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        organizationId:
+          $ref: '#/components/schemas/UUID'
+        partyId:
+          allOf:
+            - $ref: '#/components/schemas/UUID'
+          nullable: true
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        status:
+          $ref: '#/components/schemas/TransactionStatus'
+        occurredAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        totalCents:
+          type: integer
+          format: int64
+          minimum: 0
+    Obligation:
+      type: object
+      description: A SALE creates a RECEIVABLE; a PURCHASE or EXPENSE creates a PAYABLE. Status and paidAmountCents are derived by the server.
+      required: [id, organizationId, transactionId, direction, status, amountCents, paidAmountCents, currency]
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        organizationId:
+          $ref: '#/components/schemas/UUID'
+        transactionId:
+          $ref: '#/components/schemas/UUID'
+        partyId:
+          allOf:
+            - $ref: '#/components/schemas/UUID'
+          nullable: true
+        direction:
+          $ref: '#/components/schemas/ObligationDirection'
+        status:
+          $ref: '#/components/schemas/ObligationStatus'
+        amountCents:
+          type: integer
+          format: int64
+          minimum: 1
+        paidAmountCents:
+          type: integer
+          format: int64
+          minimum: 0
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+    TransactionDetail:
+      type: object
+      required: [transaction, lines]
+      properties:
+        transaction:
+          $ref: '#/components/schemas/Transaction'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionLine'
+        obligation:
+          allOf:
+            - $ref: '#/components/schemas/Obligation'
+          nullable: true
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+    ObligationDetail:
+      type: object
+      required: [obligation, payments]
+      properties:
+        obligation:
+          $ref: '#/components/schemas/Obligation'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+  responses:
+    BadRequest:
+      description: The request is malformed or failed validation.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - $ref: '#/components/schemas/ValidationErrorResponse'
+    Unauthorized:
+      description: Missing or invalid bearer token.
+      content:
+        text/plain:
+          schema:
+            type: string
+    NotFound:
+      description: The resource does not exist in the authenticated organization.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: The request conflicts with current business rules or existing data.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  parameters:
+    ResourceID:
+      name: id
+      in: path
+      required: true
+      description: Resource identifier.
+      schema:
+        $ref: '#/components/schemas/UUID'
+    PartyRole:
+      name: role
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/PartyRole'
+    TransactionTypeFilter:
+      name: type
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/TransactionType'
+    TransactionStatusFilter:
+      name: status
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/TransactionStatus'
+    ObligationDirectionFilter:
+      name: direction
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/ObligationDirection'
+    ObligationStatusFilter:
+      name: status
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/ObligationStatus'
+    PartyIDFilter:
+      name: partyId
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/UUID'
+    DueBeforeFilter:
+      name: dueBefore
+      in: query
+      required: false
+      description: Include obligations due on or before this date.
+      schema:
+        type: string
+        format: date
+    DueAfterFilter:
+      name: dueAfter
+      in: query
+      required: false
+      description: Include obligations due on or after this date.
+      schema:
+        type: string
+        format: date
+paths:
+  /organizations:
+    post:
+      tags: [Organizations]
+      summary: Create an organization and its owner user
+      operationId: createOrganization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrganizationRequest'
+      responses:
+        '201':
+          description: Organization created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /users:
+    post:
+      tags: [Users]
+      summary: Create a standalone user
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPayload'
+      responses:
+        '201':
+          description: User created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /login:
+    post:
+      tags: [Authentication]
+      summary: Authenticate a user
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: JWT issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JWTResponse'
+        '400':
+          description: Invalid login payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /parties:
+    post:
+      tags: [Parties]
+      summary: Create a party with one or more roles
+      operationId: createParty
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePartyRequest'
+      responses:
+        '201':
+          description: Party created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Party'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [Parties]
+      summary: List parties in the authenticated organization
+      operationId: listParties
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PartyRole'
+      responses:
+        '200':
+          description: Parties returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Party'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /parties/{id}:
+    get:
+      tags: [Parties]
+      summary: Get a party by ID
+      operationId: getParty
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Party returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Party'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /items:
+    post:
+      tags: [Catalog]
+      summary: Create a product or service catalog item
+      operationId: createItem
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateItemRequest'
+      responses:
+        '201':
+          description: Item created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [Catalog]
+      summary: List catalog items
+      operationId: listItems
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Items returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /items/{id}:
+    get:
+      tags: [Catalog]
+      summary: Get a catalog item by ID
+      operationId: getItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Item returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /transactions:
+    post:
+      tags: [Transactions]
+      summary: Create a transaction and its obligation
+      operationId: createTransaction
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransactionRequest'
+            examples:
+              sale:
+                summary: Sale with a customer and two service lines
+                value:
+                  type: SALE
+                  partyId: 00000000-0000-0000-0000-000000000001
+                  currency: BRL
+                  lines:
+                    - itemId: 00000000-0000-0000-0000-000000000002
+                      quantity: 1
+                      unitPriceCents: 450000
+                    - itemId: 00000000-0000-0000-0000-000000000003
+                      quantity: 2
+                      unitPriceCents: 12500
+              expense:
+                summary: Expense with a descriptive line
+                value:
+                  type: EXPENSE
+                  description: Office supplies
+                  lines:
+                    - description: Printer paper
+                      quantity: 3
+                      unitPriceCents: 2500
+      responses:
+        '201':
+          description: Transaction workflow created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [Transactions]
+      summary: List transactions
+      operationId: listTransactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TransactionTypeFilter'
+        - $ref: '#/components/parameters/TransactionStatusFilter'
+      responses:
+        '200':
+          description: Transactions returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /transactions/{id}:
+    get:
+      tags: [Transactions]
+      summary: Get a transaction by ID
+      operationId: getTransaction
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Transaction returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /obligations:
+    get:
+      tags: [Obligations]
+      summary: List receivables and payables
+      operationId: listObligations
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ObligationDirectionFilter'
+        - $ref: '#/components/parameters/ObligationStatusFilter'
+        - $ref: '#/components/parameters/PartyIDFilter'
+        - $ref: '#/components/parameters/DueBeforeFilter'
+        - $ref: '#/components/parameters/DueAfterFilter'
+      responses:
+        '200':
+          description: Obligations returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ObligationDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /obligations/{id}:
+    get:
+      tags: [Obligations]
+      summary: Get an obligation and its payments
+      operationId: getObligation
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Obligation returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObligationDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /obligations/{id}/payments:
+    post:
+      tags: [Obligations]
+      summary: Apply a payment to an obligation
+      operationId: createPayment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+      responses:
+        '201':
+          description: Payment applied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObligationDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'

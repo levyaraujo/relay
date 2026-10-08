@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"os"
 	"relay/shared"
+	"relay/user"
 	"strings"
+	"uuid"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"
@@ -24,6 +26,31 @@ type LoginErrorResponse struct {
 
 type JWTResponse struct {
 	AccessToken string `json:"accessToken"`
+}
+
+type userLookup interface {
+	FindByID(uuid.UUID) (user.User, error)
+}
+
+type organizationIDContextKey struct{}
+type userIDContextKey struct{}
+
+func WithOrganizationID(ctx context.Context, organizationID uuid.UUID) context.Context {
+	return context.WithValue(ctx, organizationIDContextKey{}, organizationID)
+}
+
+func OrganizationIDFromContext(ctx context.Context) (uuid.UUID, bool) {
+	organizationID, ok := ctx.Value(organizationIDContextKey{}).(uuid.UUID)
+	return organizationID, ok
+}
+
+func WithUserID(ctx context.Context, userID uuid.UUID) context.Context {
+	return context.WithValue(ctx, userIDContextKey{}, userID)
+}
+
+func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
+	userID, ok := ctx.Value(userIDContextKey{}).(uuid.UUID)
+	return userID, ok
 }
 
 type Handler struct {
@@ -70,9 +97,48 @@ func (h Handler) Login(w http.ResponseWriter, r *http.Request) {
 	shared.JSONResponse(w, http.StatusOK, res)
 }
 
+func Middleware(lookup userLookup) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if !strings.HasPrefix(authHeader, "Bearer ") {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			claims := &Claims{}
+			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+			secret := os.Getenv("SECRET_KEY")
+			token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
+				return []byte(secret), nil
+			})
+			if err != nil || !token.Valid {
+				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				return
+			}
+
+			userID, err := uuid.Parse(claims.Sub)
+			if err != nil {
+				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				return
+			}
+
+			currentUser, err := lookup.FindByID(userID)
+			if err != nil || currentUser.OrganizationID == nil {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			ctx := WithOrganizationID(r.Context(), *currentUser.OrganizationID)
+			ctx = WithUserID(ctx, userID)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
 type Claims struct {
 	Sub string `json:"sub"`
-	jwt.Claims
+	jwt.RegisteredClaims
 }
 
 func authMiddleware(next http.HandlerFunc) http.HandlerFunc {

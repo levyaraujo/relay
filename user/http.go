@@ -2,7 +2,6 @@ package user
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"relay/shared"
@@ -35,12 +34,6 @@ type SuccessResponse struct {
 	Email string `json:"email"`
 }
 
-type ErrorResponse struct {
-	Title      string            `json:"title"`
-	Details    string            `json:"details"`
-	Validation map[string]string `json:"validation"`
-}
-
 func (h Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var user UserPayload
 
@@ -54,9 +47,11 @@ func (h Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	err = h.validate.Struct(user)
 
 	if err != nil {
-		errRes := errorResponse(err)
-
-		shared.JSONResponse(w, http.StatusBadRequest, errRes)
+		shared.JSONResponse(
+			w,
+			http.StatusBadRequest,
+			shared.ValidationResponse(err, errorMessage),
+		)
 		return
 	}
 
@@ -69,25 +64,6 @@ func (h Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	res := SuccessResponse{Email: email}
 	shared.JSONResponse(w, http.StatusCreated, res)
-}
-
-func errorResponse(err error) ErrorResponse {
-	var ve validator.ValidationErrors
-	validation := make(map[string]string)
-
-	if errors.As(err, &ve) {
-		for _, fe := range ve {
-			msg := errorMessage(fe)
-			field := strings.ToLower(fe.Field())
-			validation[field] = msg
-		}
-	}
-	errRes := ErrorResponse{
-		Title:      "The payload is invalid",
-		Details:    "The payload has one or more validation errors, please fix them and try again.",
-		Validation: validation,
-	}
-	return errRes
 }
 
 func errorMessage(fe validator.FieldError) string {
