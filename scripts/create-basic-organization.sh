@@ -3,20 +3,20 @@
 # Requires a running Relay API with migrations applied, plus curl and jq.
 # Usage: ./scripts/create-basic-organization.sh
 # Override the default API URL or dataset size with environment variables:
-# BASE_URL=http://localhost:8080/api/v1 SALE_COUNT=10 ./scripts/create-basic-organization.sh
+# BASE_URL=http://localhost:8080/api/v1 SALE_COUNT=5000 ./scripts/create-basic-organization.sh
 
 set -Eeuo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:8080/api/v1}"
 BASE_URL="${BASE_URL%/}"
 
-CUSTOMER_COUNT="${CUSTOMER_COUNT:-4}"
-SUPPLIER_COUNT="${SUPPLIER_COUNT:-4}"
-SERVICE_COUNT="${SERVICE_COUNT:-4}"
-PRODUCT_COUNT="${PRODUCT_COUNT:-4}"
-SALE_COUNT="${SALE_COUNT:-6}"
-PURCHASE_COUNT="${PURCHASE_COUNT:-4}"
-EXPENSE_COUNT="${EXPENSE_COUNT:-4}"
+CUSTOMER_COUNT="${CUSTOMER_COUNT:-24}"
+SUPPLIER_COUNT="${SUPPLIER_COUNT:-24}"
+SERVICE_COUNT="${SERVICE_COUNT:-16}"
+PRODUCT_COUNT="${PRODUCT_COUNT:-16}"
+SALE_COUNT="${SALE_COUNT:-2000}"
+PURCHASE_COUNT="${PURCHASE_COUNT:-2000}"
+EXPENSE_COUNT="${EXPENSE_COUNT:-500}"
 
 for command in curl jq; do
 	if ! command -v "$command" >/dev/null 2>&1; then
