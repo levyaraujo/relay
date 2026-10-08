@@ -286,6 +286,44 @@ components:
           type: integer
           format: int64
           minimum: 0
+    CreateTransactionRequest:
+      type: object
+      description: |
+        Creates the transaction, its transaction lines, and one obligation atomically.
+        SALE requires a Customer party; PURCHASE requires a Supplier party; EXPENSE may omit partyId.
+        Totals, status, organizationId, and identifiers are calculated or assigned by the server.
+      required: [type, lines]
+      properties:
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        partyId:
+          allOf:
+            - $ref: '#/components/schemas/UUID'
+          nullable: true
+        occurredAt:
+          type: string
+          format: date-time
+          description: Defaults to the current time when omitted.
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: BRL
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CreateTransactionLineRequest'
+        initialPayment:
+          allOf:
+            - $ref: '#/components/schemas/CreatePaymentRequest'
+          nullable: true
     Payment:
       type: object
       required: [id, obligationId, organizationId, amountCents, paidAt, method, reference]
