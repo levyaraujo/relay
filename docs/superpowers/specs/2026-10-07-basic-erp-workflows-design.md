@@ -42,6 +42,8 @@ Each confirmed transaction creates at most one obligation in this slice. A sale 
 
 The existing `customer/` skeleton is adapted into the `party/` module so the repository has one canonical concept for business counterparties.
 
+HTTP request and response DTOs remain separate from domain entities. Request DTOs contain only client-controlled fields, while identifiers, organization ownership, calculated totals, statuses, balances, and timestamps stay under service/repository control. Mapping helpers may reduce repetition, but entities are not decoded directly from write requests or used as unrestricted write responses.
+
 ## API contract
 
 Party and catalog endpoints provide organization-scoped create, list, and detail operations:
