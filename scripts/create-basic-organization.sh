@@ -28,6 +28,8 @@ done
 RUN_ID="$(date +%s)-${RANDOM}"
 RUN_SEED="$(date +%s)${RANDOM}"
 OWNER_EMAIL="owner-${RUN_ID}@relay.local"
+ORGANIZATION_PHONE="55$(printf '%012d' $((RUN_SEED % 1000000000000)))"
+OWNER_PHONE="56$(printf '%012d' $(((RUN_SEED + 1) % 1000000000000)))"
 
 declare -a CUSTOMER_IDS=()
 declare -a SUPPLIER_IDS=()
@@ -212,13 +214,16 @@ organization_payload="$(jq -nc \
 	--arg name "Relay Demo ${RUN_ID}" \
 	--arg email "org-${RUN_ID}@relay.local" \
 	--arg tax_id "$(new_cnpj 1)" \
+	--arg organization_phone "$ORGANIZATION_PHONE" \
 	--arg owner_email "$OWNER_EMAIL" \
 	--arg owner_document "$(new_cpf 2)" \
+	--arg owner_phone "$OWNER_PHONE" \
 	'{
 		organization: {
 			name: $name,
 			email: $email,
 			taxId: $tax_id,
+			phone: $organization_phone,
 			type: "SERVICES",
 			currency: "BRL",
 			description: "Local integration-test organization"
@@ -228,7 +233,7 @@ organization_payload="$(jq -nc \
 			email: $owner_email,
 			password: "RelayDemo123!",
 			document: $owner_document,
-			phone: "5511999990000"
+			phone: $owner_phone
 		}
 	}')"
 
