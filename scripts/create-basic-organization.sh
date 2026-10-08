@@ -33,6 +33,7 @@ declare -a CUSTOMER_IDS=()
 declare -a SUPPLIER_IDS=()
 declare -a SERVICE_IDS=()
 declare -a PRODUCT_IDS=()
+declare -a AUTH_HEADER=()
 
 cnpj_digit() {
 	local digits="$1"
@@ -104,21 +105,35 @@ api_post() {
 	local path="$1"
 	local body="$2"
 
-	curl --fail-with-body --silent --show-error \
-		-X POST \
-		-H 'Content-Type: application/json' \
-		"${AUTH_HEADER[@]}" \
-		--data "$body" \
-		"${BASE_URL}${path}"
+	if ((${#AUTH_HEADER[@]} > 0)); then
+		curl --fail-with-body --silent --show-error \
+			-X POST \
+			-H 'Content-Type: application/json' \
+			"${AUTH_HEADER[@]}" \
+			--data "$body" \
+			"${BASE_URL}${path}"
+	else
+		curl --fail-with-body --silent --show-error \
+			-X POST \
+			-H 'Content-Type: application/json' \
+			--data "$body" \
+			"${BASE_URL}${path}"
+	fi
 }
 
 api_get() {
 	local path="$1"
 
-	curl --fail-with-body --silent --show-error \
-		-H 'Accept: application/json' \
-		"${AUTH_HEADER[@]}" \
-		"${BASE_URL}${path}"
+	if ((${#AUTH_HEADER[@]} > 0)); then
+		curl --fail-with-body --silent --show-error \
+			-H 'Accept: application/json' \
+			"${AUTH_HEADER[@]}" \
+			"${BASE_URL}${path}"
+	else
+		curl --fail-with-body --silent --show-error \
+			-H 'Accept: application/json' \
+			"${BASE_URL}${path}"
+	fi
 }
 
 create_party() {
@@ -217,7 +232,6 @@ organization_payload="$(jq -nc \
 		}
 	}')"
 
-AUTH_HEADER=()
 api_post /organizations "$organization_payload" >/dev/null
 echo "✓ organization and owner created (${OWNER_EMAIL})"
 
