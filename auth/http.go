@@ -33,10 +33,24 @@ type userLookup interface {
 }
 
 type organizationIDContextKey struct{}
+type userIDContextKey struct{}
+
+func WithOrganizationID(ctx context.Context, organizationID uuid.UUID) context.Context {
+	return context.WithValue(ctx, organizationIDContextKey{}, organizationID)
+}
 
 func OrganizationIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 	organizationID, ok := ctx.Value(organizationIDContextKey{}).(uuid.UUID)
 	return organizationID, ok
+}
+
+func WithUserID(ctx context.Context, userID uuid.UUID) context.Context {
+	return context.WithValue(ctx, userIDContextKey{}, userID)
+}
+
+func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
+	userID, ok := ctx.Value(userIDContextKey{}).(uuid.UUID)
+	return userID, ok
 }
 
 type Handler struct {
@@ -115,7 +129,8 @@ func Middleware(lookup userLookup) func(http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), organizationIDContextKey{}, *currentUser.OrganizationID)
+			ctx := WithOrganizationID(r.Context(), *currentUser.OrganizationID)
+			ctx = WithUserID(ctx, userID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

@@ -32,11 +32,16 @@ Each confirmed transaction creates at most one obligation in this slice. A sale 
 
 `Payment` is a separate record linked to an obligation. Payments may be partial and may not exceed the outstanding balance. Payment creation recalculates the obligation status atomically.
 
+### Audit events
+
+Mutating workflows emit domain events asynchronously. The business write and an outbox event are committed together; a background dispatcher processes the event and writes an append-only audit log. Audit delivery is eventually consistent, retryable, and idempotent by event ID.
+
 ## Module boundaries
 
 - `party/`: Party entity, role assignment, HTTP handlers, repository, and service.
 - `catalog/`: Item entity, HTTP handlers, repository, and service.
 - `finance/`: Transaction, TransactionLine, Obligation, and Payment entities; workflow HTTP handlers, repository, and service.
+- `audit/`: outbox event and audit-log records plus the asynchronous dispatcher; it has no public HTTP surface.
 - `organization/`, `user/`, and `auth/`: existing onboarding and authentication flows remain available.
 - `shared/`: reusable document normalization, validation, response, and money primitives only.
 
@@ -73,8 +78,11 @@ The migration adds:
 - `items` with organization-scoped identity and item kind.
 - `transactions` and `transaction_lines`.
 - `obligations` and `payments`.
+- `outbox_events` and `audit_logs` for reliable asynchronous auditing.
 
-Transaction creation inserts the transaction header, lines, obligation, and optional initial payment in one database transaction. Payment creation locks the obligation row, validates the remaining balance, inserts the payment, and updates the derived status in the same database transaction. All repository queries scope access through `organization_id`.
+Transaction creation inserts the transaction header, lines, obligation, optional initial payment, and outbox event in one database transaction. Payment creation locks the obligation row, validates the remaining balance, inserts the payment, updates the derived status, and enqueues an outbox event in the same database transaction. Party and catalog writes follow the same outbox pattern. All repository queries scope access through `organization_id`.
+
+Generic `created_at`/`updated_at` columns are not added to every business entity. Domain timestamps remain where meaningful (`occurred_at`, `paid_at`); audit entries have their own `created_at`.
 
 ## Error handling
 
@@ -94,8 +102,9 @@ Tests will cover:
 - Full, partial, zero, negative, and over-payments.
 - Derived obligation statuses and concurrent-safe payment behavior at the repository boundary.
 - HTTP validation, status codes, and organization scoping.
+- Outbox creation, retry behavior, and idempotent audit consumption.
 - Regression coverage for organization onboarding and standalone user creation.
 
 ## Out of scope
 
-Inventory quantities and stock movements, tax calculation, invoice documents, recurring transactions, approvals, accounting journal entries, reconciliation, refunds, deletion, and automated reminders are intentionally deferred.
+Inventory quantities and stock movements, tax calculation, invoice documents, recurring transactions, approvals, accounting journal entries, reconciliation, refunds, deletion, automated reminders, and an external message broker are intentionally deferred.

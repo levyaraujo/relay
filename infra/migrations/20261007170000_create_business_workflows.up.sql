@@ -47,7 +47,6 @@ CREATE TABLE IF NOT EXISTS parties
   email VARCHAR(255),
   phone VARCHAR(255),
   document VARCHAR(255) NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
   CONSTRAINT parties_organization_document_unique UNIQUE (organization_id, document),
   CONSTRAINT parties_id_organization_unique UNIQUE (id, organization_id)
@@ -70,9 +69,9 @@ CREATE TABLE IF NOT EXISTS items
   kind item_kind NOT NULL,
   default_price_cents BIGINT NOT NULL DEFAULT 0 CHECK (default_price_cents >= 0),
   currency VARCHAR(3) NOT NULL DEFAULT 'BRL',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-  CONSTRAINT items_id_organization_unique UNIQUE (id, organization_id)
+  CONSTRAINT items_id_organization_unique UNIQUE (id, organization_id),
+  CONSTRAINT items_organization_name_unique UNIQUE (organization_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS transactions
@@ -86,7 +85,6 @@ CREATE TABLE IF NOT EXISTS transactions
   description VARCHAR(1000),
   currency VARCHAR(3) NOT NULL DEFAULT 'BRL',
   total_cents BIGINT NOT NULL CHECK (total_cents >= 0),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
   CONSTRAINT transactions_party_organization_fk
     FOREIGN KEY (party_id, organization_id)
@@ -121,7 +119,6 @@ CREATE TABLE IF NOT EXISTS obligations
   paid_amount_cents BIGINT NOT NULL DEFAULT 0 CHECK (paid_amount_cents >= 0),
   currency VARCHAR(3) NOT NULL DEFAULT 'BRL',
   due_date DATE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
   CONSTRAINT obligations_paid_amount_check CHECK (paid_amount_cents <= amount_cents),
   CONSTRAINT obligations_party_organization_fk
@@ -139,11 +136,39 @@ CREATE TABLE IF NOT EXISTS payments
   paid_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   method payment_method NOT NULL,
   reference VARCHAR(255),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
   CONSTRAINT payments_obligation_organization_fk
     FOREIGN KEY (obligation_id, organization_id)
     REFERENCES obligations(id, organization_id)
+);
+
+CREATE TABLE IF NOT EXISTS outbox_events
+(
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  event_type VARCHAR(100) NOT NULL,
+  entity_type VARCHAR(100) NOT NULL,
+  entity_id UUID NOT NULL,
+  action VARCHAR(30) NOT NULL,
+  payload JSONB NOT NULL,
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  published_at TIMESTAMPTZ,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs
+(
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  event_id UUID NOT NULL UNIQUE REFERENCES outbox_events(id) ON DELETE RESTRICT,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  entity_type VARCHAR(100) NOT NULL,
+  entity_id UUID NOT NULL,
+  action VARCHAR(30) NOT NULL,
+  changes JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS parties_organization_idx ON parties (organization_id);
@@ -153,3 +178,5 @@ CREATE INDEX IF NOT EXISTS transactions_organization_idx ON transactions (organi
 CREATE INDEX IF NOT EXISTS obligations_organization_status_idx ON obligations (organization_id, status);
 CREATE INDEX IF NOT EXISTS obligations_due_date_idx ON obligations (due_date);
 CREATE INDEX IF NOT EXISTS payments_obligation_idx ON payments (obligation_id);
+CREATE INDEX IF NOT EXISTS outbox_events_pending_idx ON outbox_events (published_at, occurred_at);
+CREATE INDEX IF NOT EXISTS audit_logs_entity_idx ON audit_logs (organization_id, entity_type, entity_id);

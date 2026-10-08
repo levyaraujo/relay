@@ -37,12 +37,17 @@ func TestMiddlewareAddsOrganizationIDToRequestContext(t *testing.T) {
 	request.Header.Set("Authorization", "Bearer "+tokenString)
 	response := httptest.NewRecorder()
 	var gotOrganizationID uuid.UUID
+	var gotUserID uuid.UUID
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var ok bool
 		gotOrganizationID, ok = OrganizationIDFromContext(r.Context())
 		if !ok {
 			t.Error("organization ID missing from request context")
+		}
+		gotUserID, ok = UserIDFromContext(r.Context())
+		if !ok {
+			t.Error("user ID missing from request context")
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
@@ -55,6 +60,9 @@ func TestMiddlewareAddsOrganizationIDToRequestContext(t *testing.T) {
 	}
 	if gotOrganizationID != organizationID {
 		t.Fatalf("organization ID = %s, want %s", gotOrganizationID, organizationID)
+	}
+	if gotUserID != userID {
+		t.Fatalf("user ID = %s, want %s", gotUserID, userID)
 	}
 }
 

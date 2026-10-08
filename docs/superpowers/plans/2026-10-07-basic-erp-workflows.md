@@ -18,6 +18,8 @@
 - Request/response DTOs remain separate from domain entities.
 - All new reads and writes are scoped through `organization_id`.
 - Transaction creation and payment creation are atomic database workflows.
+- Mutating workflows enqueue outbox events in the same transaction; audit persistence is asynchronous and idempotent by event ID.
+- Generic `created_at`/`updated_at` columns are not added to every business entity; retain only domain timestamps.
 - Existing organization onboarding and standalone `/api/v1/users` creation remain available.
 - Do not add tax, invoice, recurring transaction, approval, accounting-ledger, reconciliation, refund, deletion, or reminder workflows.
 
@@ -31,11 +33,15 @@
 
 ---
 
-### Task 1: Add authenticated organization context and workflow migration
+### Task 1: Add authenticated organization context, audit outbox, and workflow migration
 
 **Files:**
 - Create: `infra/migrations/20261007170000_create_business_workflows.up.sql`
 - Create: `infra/migrations/20261007170000_create_business_workflows.down.sql`
+- Create: `audit/entity.go`
+- Create: `audit/repo.go`
+- Create: `audit/services.go`
+- Create: `audit/audit_test.go`
 - Modify: `auth/http.go`
 - Modify: `user/repo.go`
 - Modify: `main.go`
@@ -44,14 +50,18 @@
 **Interfaces:**
 - Produces `auth.Middleware(next http.Handler, repo user.Repo) http.Handler`.
 - Produces an organization ID in request context for protected workflow handlers.
+- Produces the authenticated user ID in request context for audit actor attribution.
 - Produces `user.Repo.FindByID(id uuid.UUID) (User, error)` or an equivalent organization lookup.
+- Produces an outbox event seam storing event ID, organization, actor, entity, action, payload, and occurrence time.
 
 - [ ] **Step 1: Write failing tests** for middleware context population and rejection of missing/invalid bearer tokens. Assert a valid user request carries the user’s `OrganizationID`, while a user without an organization is unauthorized for organization-scoped workflows.
 - [ ] **Step 2: Run `go test ./auth ./user`** and confirm the tests fail because the exported middleware/context lookup and repository lookup do not exist.
 - [ ] **Step 3: Implement the auth seam** without changing login behavior. Preserve the existing JWT validation, expose only the middleware/context access needed by protected handlers, and add the repository lookup with organization scoping.
-- [ ] **Step 4: Write the migration** with organization-scoped tables and constraints for `parties`, `party_roles`, `items`, `transactions`, `transaction_lines`, `obligations`, and `payments`; add enum/check values for party roles, item kinds, transaction types/statuses, obligation directions/statuses, and payment methods. Add indexes for organization, role, due date, and obligation status.
-- [ ] **Step 5: Run `go test ./auth ./user ./...`** and verify all existing tests pass.
-- [ ] **Step 6: Commit** the auth context and migration separately from domain modules.
+- [ ] **Step 4: Write the migration** with organization-scoped business tables plus `outbox_events` and append-only `audit_logs`; omit generic timestamps from business tables, retain domain timestamps, and add enum/check values, foreign keys, uniqueness constraints, and indexes.
+- [ ] **Step 5: Write failing audit tests** for outbox event creation, retryable unpublished events, and idempotent audit-log consumption by event ID.
+- [ ] **Step 6: Implement the audit repository/dispatcher**. Poll unpublished outbox events, write one audit row per event, and mark events processed only after audit persistence succeeds. Keep this asynchronous and out of request handlers.
+- [ ] **Step 7: Run `go test ./auth ./user ./audit ./...`** and verify all existing tests pass.
+- [ ] **Step 8: Commit** the auth context, audit module, and migration separately from domain modules.
 
 ### Task 2: Implement the Party module
 
@@ -74,7 +84,7 @@
 
 - [ ] **Step 1: Write failing service tests** for document normalization/validation, duplicate role idempotency, invalid roles, and creation of one Party with both roles. Assert organization ID comes from the service argument, not the request DTO.
 - [ ] **Step 2: Run `go test ./party`** and verify failure because the Party module does not exist.
-- [ ] **Step 3: Implement the Party entity/service/repository**. Keep request DTOs separate; normalize documents before persistence; use one insert transaction for the Party and role rows; map duplicate constraints to a domain conflict error. Preserve the current customer behavior in the new package before deleting the old `customer/` files.
+- [ ] **Step 3: Implement the Party entity/service/repository**. Keep request DTOs separate; normalize documents before persistence; use one insert transaction for the Party, role rows, and a Party-created outbox event; map duplicate constraints to a domain conflict error. Preserve the current customer behavior in the new package before deleting the old `customer/` files.
 - [ ] **Step 4: Write failing handler tests** for create/list/detail, validation errors, missing resources, and cross-organization IDs returning `404`.
 - [ ] **Step 5: Implement handlers** using authenticated organization context and shared JSON/validation responses.
 - [ ] **Step 6: Register protected Party routes** behind `auth.Middleware` in `main.go`.
@@ -99,7 +109,7 @@
 
 - [ ] **Step 1: Write failing service tests** for valid PRODUCT/SERVICE kinds, rejection of invalid kinds and negative prices, and defaulting an omitted currency to the organization currency (`BRL` for the current organization model).
 - [ ] **Step 2: Run `go test ./catalog`** and verify failure.
-- [ ] **Step 3: Implement entity, DTOs, service, and repository** with organization scoping and uniqueness constraints.
+- [ ] **Step 3: Implement entity, DTOs, service, and repository** with organization scoping, uniqueness constraints, and an Item-created outbox event.
 - [ ] **Step 4: Write failing handler tests** for create/list/detail, invalid payloads, and cross-organization item IDs.
 - [ ] **Step 5: Implement handlers and register protected routes.**
 - [ ] **Step 6: Run `go test ./catalog ./...`** and commit the catalog module.
@@ -130,7 +140,7 @@
 - [ ] **Step 2: Run `go test ./finance`** and verify failure.
 - [ ] **Step 3: Implement domain calculations and validation**. Ignore any client-provided totals/statuses/organization IDs. Reject empty lines, non-positive quantities, negative unit prices, and invalid currencies/types.
 - [ ] **Step 4: Write failing repository tests** proving transaction header, lines, obligation, and optional initial payment are committed together and rolled back together. Add cross-organization lookup tests.
-- [ ] **Step 5: Implement the atomic repository workflow** using one SQL transaction. Generate `RECEIVABLE` for sales and `PAYABLE` for purchases/expenses; derive initial obligation status from the optional initial payment.
+- [ ] **Step 5: Implement the atomic repository workflow** using one SQL transaction. Generate `RECEIVABLE` for sales and `PAYABLE` for purchases/expenses; derive initial obligation status from the optional initial payment; enqueue a transaction-created outbox event.
 - [ ] **Step 6: Write failing handler tests** for request validation, `201 Created`, `400` validation, `404` resource lookup, `409` role conflict, and ignoring client-controlled computed fields.
 - [ ] **Step 7: Implement handlers, register protected routes, run `go test ./finance ./...`, and commit the transaction workflow.**
 
@@ -154,7 +164,7 @@
 - [ ] **Step 2: Run `go test ./finance`** and verify failure.
 - [ ] **Step 3: Implement service validation and status calculation** from original amount minus applied payments; never accept a client-provided balance or status.
 - [ ] **Step 4: Write failing repository tests** for `SELECT ... FOR UPDATE`, payment insert, obligation status update, rollback on insert/update failure, and two concurrent payment attempts against one remaining balance.
-- [ ] **Step 5: Implement the atomic payment repository workflow** with row locking and organization-scoped lookup.
+- [ ] **Step 5: Implement the atomic payment repository workflow** with row locking, organization-scoped lookup, and a payment-created outbox event.
 - [ ] **Step 6: Implement obligation/payment handlers and list/detail filters** for direction, status, party, and due date.
 - [ ] **Step 7: Run `go test ./finance ./...` and commit the payment workflow.**
 
@@ -167,10 +177,11 @@
 
 - [ ] **Step 1: Add an end-to-end workflow test** that creates one Party with Customer/Supplier roles, creates a Service item, creates a sale with two transaction lines, verifies the Receivable, applies a partial payment, and verifies the remaining balance/status.
 - [ ] **Step 2: Add a purchase/expense workflow test** verifying Supplier role enforcement and Payable direction.
-- [ ] **Step 3: Apply the migration to a disposable PostgreSQL database** and run repository integration tests against it.
-- [ ] **Step 4: Run `go test ./...`, `go vet ./...`, and `git diff --check`.
-- [ ] **Step 5: Verify existing organization onboarding and `/api/v1/users` creation still work.
-- [ ] **Step 6: Commit the integration and verification changes.**
+- [ ] **Step 3: Run the audit dispatcher against generated events** and verify duplicate delivery produces one audit log per event ID.
+- [ ] **Step 4: Apply the migration to a disposable PostgreSQL database** and run repository integration tests against it.
+- [ ] **Step 5: Run `go test ./...`, `go vet ./...`, and `git diff --check`.
+- [ ] **Step 6: Verify existing organization onboarding and `/api/v1/users` creation still work.
+- [ ] **Step 7: Commit the integration and verification changes.**
 
 ## Final Verification
 

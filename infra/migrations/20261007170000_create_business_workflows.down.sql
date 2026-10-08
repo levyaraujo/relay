@@ -5,6 +5,8 @@ DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS items;
 DROP TABLE IF EXISTS party_roles;
 DROP TABLE IF EXISTS parties;
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS outbox_events;
 
 DROP TYPE IF EXISTS payment_method;
 DROP TYPE IF EXISTS obligation_status;
